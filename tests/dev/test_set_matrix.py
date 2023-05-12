@@ -27,13 +27,18 @@ class MockResponse:
     @classmethod
     def from_versions(cls, versions):
         return cls(
-            {"releases": {v: [{"filename": v + ".whl", "upload_time": v}] for v in versions}}
+            {
+                "releases": {
+                    v: [{"filename": f"{v}.whl", "upload_time": v}]
+                    for v in versions
+                }
+            }
         )
 
 
 def mock_pypi_api(mock_responses):
     def urlopen_patch(url, *args, **kwargs):  # pylint: disable=unused-argument
-        package_name = re.search(r"https://pypi.python.org/pypi/(.+)/json", url).group(1)
+        package_name = re.search(r"https://pypi.python.org/pypi/(.+)/json", url)[1]
         return mock_responses[package_name]
 
     def decorotor(test_func):
@@ -100,7 +105,7 @@ def test_flavors(flavors, expected):
     with mock_ml_package_versions_yml(MOCK_YAML_SOURCE, "{}") as path_args:
         flavors_args = [] if flavors is None else ["--flavors", flavors]
         matrix = generate_matrix([*path_args, *flavors_args])
-        flavors = set(x["flavor"] for x in matrix)
+        flavors = {x["flavor"] for x in matrix}
         assert flavors == expected
 
 
@@ -119,7 +124,7 @@ def test_versions(versions, expected):
     with mock_ml_package_versions_yml(MOCK_YAML_SOURCE, "{}") as path_args:
         versions_args = [] if versions is None else ["--versions", versions]
         matrix = generate_matrix([*path_args, *versions_args])
-        versions = set(x["version"] for x in matrix)
+        versions = {x["version"] for x in matrix}
         assert versions == expected
 
 
@@ -127,7 +132,7 @@ def test_versions(versions, expected):
 def test_flavors_and_versions():
     with mock_ml_package_versions_yml(MOCK_YAML_SOURCE, "{}") as path_args:
         matrix = generate_matrix([*path_args, "--flavors", "foo,bar", "--versions", "dev"])
-        flavors = set(x["flavor"] for x in matrix)
-        versions = set(x["version"] for x in matrix)
+        flavors = {x["flavor"] for x in matrix}
+        versions = {x["version"] for x in matrix}
         assert set(flavors) == {"foo", "bar"}
         assert set(versions) == {"dev"}

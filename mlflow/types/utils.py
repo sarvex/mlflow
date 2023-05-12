@@ -13,7 +13,7 @@ from mlflow.types.schema import Schema, ColSpec, TensorSpec
 class TensorsNotSupportedException(MlflowException):
     def __init__(self, msg):
         super().__init__(
-            "Multidimensional arrays (aka tensors) are not supported. " "{}".format(msg)
+            f"Multidimensional arrays (aka tensors) are not supported. {msg}"
         )
 
 
@@ -31,7 +31,7 @@ def _get_tensor_shape(data: np.ndarray, variable_dimension: Optional[int] = 0) -
     :return: tuple : Shape of the inputted data (including a variable dimension)
     """
     if not isinstance(data, np.ndarray):
-        raise TypeError("Expected numpy.ndarray, got '{}'.".format(type(data)))
+        raise TypeError(f"Expected numpy.ndarray, got '{type(data)}'.")
     variable_input_data_shape = data.shape
     if variable_dimension is not None:
         try:
@@ -131,12 +131,10 @@ def _infer_schema(data: Any) -> Schema:
         )
     else:
         raise TypeError(
-            "Expected one of (pandas.DataFrame, numpy array, "
-            "dictionary of (name -> numpy.ndarray), pyspark.sql.DataFrame) "
-            "but got '{}'".format(type(data))
+            f"Expected one of (pandas.DataFrame, numpy array, dictionary of (name -> numpy.ndarray), pyspark.sql.DataFrame) but got '{type(data)}'"
         )
     if not schema.is_tensor_spec() and any(
-        [t in (DataType.integer, DataType.long) for t in schema.column_types()]
+        t in (DataType.integer, DataType.long) for t in schema.column_types()
     ):
         warnings.warn(
             "Hint: Inferred schema contains integer column(s). Integer columns in "
@@ -167,12 +165,12 @@ def _infer_numpy_dtype(dtype) -> DataType:
         pass
     if not isinstance(dtype, supported_types):
         raise TypeError(
-            "Expected numpy.dtype or pandas.ExtensionDtype, got '{}'.".format(type(dtype))
+            f"Expected numpy.dtype or pandas.ExtensionDtype, got '{type(dtype)}'."
         )
 
     if dtype.kind == "b":
         return DataType.boolean
-    elif dtype.kind == "i" or dtype.kind == "u":
+    elif dtype.kind in ["i", "u"]:
         if dtype.itemsize < 4 or (dtype.kind == "i" and dtype.itemsize == 4):
             return DataType.integer
         elif dtype.itemsize < 8 or (dtype.kind == "i" and dtype.itemsize == 8):
@@ -199,9 +197,9 @@ def _infer_numpy_dtype(dtype) -> DataType:
 
 def _infer_pandas_column(col: pd.Series) -> DataType:
     if not isinstance(col, pd.Series):
-        raise TypeError("Expected pandas.Series, got '{}'.".format(type(col)))
+        raise TypeError(f"Expected pandas.Series, got '{type(col)}'.")
     if len(col.values.shape) > 1:
-        raise MlflowException("Expected 1d array, got array with shape {}".format(col.shape))
+        raise MlflowException(f"Expected 1d array, got array with shape {col.shape}")
 
     class IsInstanceOrNone(object):
         def __init__(self, *args):
@@ -219,23 +217,22 @@ def _infer_pandas_column(col: pd.Series) -> DataType:
 
     if col.dtype.kind == "O":
         col = col.infer_objects()
-    if col.dtype.kind == "O":
-        # NB: Objects can be either binary or string. Pandas may consider binary data to be a string
-        # so we need to check for binary first.
-        is_binary_test = IsInstanceOrNone(bytes, bytearray)
-        if all(map(is_binary_test, col)) and is_binary_test.seen_instances > 0:
-            return DataType.binary
-        elif pd.api.types.is_string_dtype(col):
-            return DataType.string
-        else:
-            raise MlflowException(
-                "Unable to map 'np.object' type to MLflow DataType. np.object can"
-                "be mapped iff all values have identical data type which is one "
-                "of (string, (bytes or byterray),  int, float)."
-            )
-    else:
+    if col.dtype.kind != "O":
         # NB: The following works for numpy types as well as pandas extension types.
         return _infer_numpy_dtype(col.dtype)
+    # NB: Objects can be either binary or string. Pandas may consider binary data to be a string
+    # so we need to check for binary first.
+    is_binary_test = IsInstanceOrNone(bytes, bytearray)
+    if all(map(is_binary_test, col)) and is_binary_test.seen_instances > 0:
+        return DataType.binary
+    elif pd.api.types.is_string_dtype(col):
+        return DataType.string
+    else:
+        raise MlflowException(
+            "Unable to map 'np.object' type to MLflow DataType. np.object can"
+            "be mapped iff all values have identical data type which is one "
+            "of (string, (bytes or byterray),  int, float)."
+        )
 
 
 def _infer_spark_type(x) -> DataType:
@@ -257,13 +254,11 @@ def _infer_spark_type(x) -> DataType:
         return DataType.string
     elif isinstance(x, pyspark.sql.types.BinaryType):
         return DataType.binary
-    # NB: Spark differentiates date and timestamps, so we coerce both to TimestampType.
     elif isinstance(x, (pyspark.sql.types.DateType, pyspark.sql.types.TimestampType)):
         return DataType.datetime
     else:
         raise Exception(
-            "Unsupported Spark Type '{}', MLflow schema is only supported for scalar "
-            "Spark types.".format(type(x))
+            f"Unsupported Spark Type '{type(x)}', MLflow schema is only supported for scalar Spark types."
         )
 
 

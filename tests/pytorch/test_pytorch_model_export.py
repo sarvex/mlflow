@@ -66,8 +66,10 @@ def data():
 
 def get_dataset(data):
     x, y = data
-    dataset = [(xi.astype(np.float32), yi.astype(np.float32)) for xi, yi in zip(x.values, y.values)]
-    return dataset
+    return [
+        (xi.astype(np.float32), yi.astype(np.float32))
+        for xi, yi in zip(x.values, y.values)
+    ]
 
 
 def train_model(model, data):
@@ -113,15 +115,16 @@ def get_subclassed_model_definition():
     """
 
     # pylint: disable=W0223
+
+
     class SubclassedModel(torch.nn.Module):
         def __init__(self):
             super().__init__()
             self.linear = torch.nn.Linear(4, 1)
 
         def forward(self, x):
-            # pylint: disable=arguments-differ
-            y_pred = self.linear(x)
-            return y_pred
+            return self.linear(x)
+
 
     return SubclassedModel
 
@@ -347,7 +350,7 @@ def test_load_model_from_remote_uri_succeeds(
     artifact_repo = S3ArtifactRepository(artifact_root)
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     sequential_model_loaded = mlflow.pytorch.load_model(model_uri=model_uri)
     np.testing.assert_array_equal(_predict(sequential_model_loaded, data), sequential_predicted)
 
@@ -557,12 +560,10 @@ def test_load_model_with_differing_pytorch_version_logs_warning(sequential_model
         mlflow.pytorch.load_model(model_uri=model_path)
 
     assert any(
-        [
-            "does not match installed PyTorch version" in log_message
-            and saver_pytorch_version in log_message
-            and loader_pytorch_version in log_message
-            for log_message in log_messages
-        ]
+        "does not match installed PyTorch version" in log_message
+        and saver_pytorch_version in log_message
+        and loader_pytorch_version in log_message
+        for log_message in log_messages
     )
 
 
@@ -598,7 +599,9 @@ def test_save_model_with_wrong_codepaths_fails_correctly(
         mlflow.pytorch.save_model(
             path=model_path, pytorch_model=module_scoped_subclassed_model, code_paths="some string"
         )
-    assert "Argument code_paths should be a list, not {}".format(type("")) in str(exc_info.value)
+    assert f'Argument code_paths should be a list, not {type("")}' in str(
+        exc_info.value
+    )
     assert not os.path.exists(model_path)
 
 

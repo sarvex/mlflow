@@ -63,7 +63,7 @@ class RunOperations:
             except Exception as e:
                 failed_operations.append(e)
 
-        if len(failed_operations) > 0:
+        if failed_operations:
             raise MlflowException(
                 message=(
                     "The following failures occurred while performing one or more logging"
@@ -317,13 +317,16 @@ class MlflowAutologgingQueueingClient:
                 )
             )
 
-        for metrics_batch in chunk_list(
-            pending_operations.metrics_queue, chunk_size=MAX_METRICS_PER_BATCH
-        ):
-            operation_results.append(
-                self._try_operation(self._client.log_batch, run_id=run_id, metrics=metrics_batch,)
+        operation_results.extend(
+            self._try_operation(
+                self._client.log_batch,
+                run_id=run_id,
+                metrics=metrics_batch,
             )
-
+            for metrics_batch in chunk_list(
+                pending_operations.metrics_queue, chunk_size=MAX_METRICS_PER_BATCH
+            )
+        )
         if pending_operations.set_terminated:
             operation_results.append(
                 self._try_operation(
@@ -334,8 +337,9 @@ class MlflowAutologgingQueueingClient:
                 )
             )
 
-        failures = [result for result in operation_results if isinstance(result, Exception)]
-        if len(failures) > 0:
+        if failures := [
+            result for result in operation_results if isinstance(result, Exception)
+        ]:
             raise MlflowException(
                 message=(
                     "Failed to perform one or more operations on the run with ID {run_id}."

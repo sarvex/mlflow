@@ -19,9 +19,7 @@ def _get_dbutils():
         if ip_shell is None:
             raise _NoDbutilsError
         return ip_shell.ns_table["user_global"]["dbutils"]
-    except ImportError:
-        raise _NoDbutilsError
-    except KeyError:
+    except (ImportError, KeyError):
         raise _NoDbutilsError
 
 
@@ -44,10 +42,7 @@ def _get_extra_context(context_key):
 
 def _get_context_tag(context_tag_key):
     tag_opt = _get_command_context().tags().get(context_tag_key)
-    if tag_opt.isDefined():
-        return tag_opt.get()
-    else:
-        return None
+    return tag_opt.get() if tag_opt.isDefined() else None
 
 
 def acl_path_of_acl_root():
@@ -61,8 +56,7 @@ def _get_property_from_spark_context(key):
     try:
         from pyspark import TaskContext  # pylint: disable=import-error
 
-        task_context = TaskContext.get()
-        if task_context:
+        if task_context := TaskContext.get():
             return task_context.getLocalProperty(key)
     except Exception:
         return None
@@ -128,9 +122,7 @@ def get_notebook_id():
     if notebook_id is not None:
         return notebook_id
     acl_path = acl_path_of_acl_root()
-    if acl_path.startswith("/workspace"):
-        return acl_path.split("/")[-1]
-    return None
+    return acl_path.split("/")[-1] if acl_path.startswith("/workspace") else None
 
 
 def get_notebook_path():
@@ -254,10 +246,13 @@ def get_browser_hostname():
 
 
 def get_workspace_info_from_dbutils():
-    dbutils = _get_dbutils()
-    if dbutils:
+    if dbutils := _get_dbutils():
         browser_hostname = get_browser_hostname()
-        workspace_host = "https://" + browser_hostname if browser_hostname else get_webapp_url()
+        workspace_host = (
+            f"https://{browser_hostname}"
+            if browser_hostname
+            else get_webapp_url()
+        )
         workspace_id = get_workspace_id()
         return workspace_host, workspace_id
     return None, None
@@ -266,10 +261,11 @@ def get_workspace_info_from_dbutils():
 def get_workspace_info_from_databricks_secrets(tracking_uri):
     profile, key_prefix = get_db_info_from_uri(tracking_uri)
     if key_prefix:
-        dbutils = _get_dbutils()
-        if dbutils:
-            workspace_id = dbutils.secrets.get(scope=profile, key=key_prefix + "-workspace-id")
-            workspace_host = dbutils.secrets.get(scope=profile, key=key_prefix + "-host")
+        if dbutils := _get_dbutils():
+            workspace_id = dbutils.secrets.get(
+                scope=profile, key=f"{key_prefix}-workspace-id"
+            )
+            workspace_host = dbutils.secrets.get(scope=profile, key=f"{key_prefix}-host")
             return workspace_host, workspace_id
     return None, None
 
@@ -313,12 +309,11 @@ def get_databricks_host_creds(server_uri=None):
     # if a path is specified, that implies a Databricks tracking URI of the form:
     # databricks://profile-name/path-specifier
     if (not config or not config.host) and path:
-        dbutils = _get_dbutils()
-        if dbutils:
+        if dbutils := _get_dbutils():
             # Prefix differentiates users and is provided as path information in the URI
             key_prefix = path
-            host = dbutils.secrets.get(scope=profile, key=key_prefix + "-host")
-            token = dbutils.secrets.get(scope=profile, key=key_prefix + "-token")
+            host = dbutils.secrets.get(scope=profile, key=f"{key_prefix}-host")
+            token = dbutils.secrets.get(scope=profile, key=f"{key_prefix}-token")
             if host and token:
                 config = provider.DatabricksConfig.from_token(
                     host=host, token=token, insecure=False

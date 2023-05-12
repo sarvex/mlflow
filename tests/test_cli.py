@@ -107,7 +107,7 @@ def sqlite_store():
     fd, temp_dbfile = tempfile.mkstemp()
     # Close handle immediately so that we can remove the file later on in Windows
     os.close(fd)
-    db_uri = "sqlite:///%s" % temp_dbfile
+    db_uri = f"sqlite:///{temp_dbfile}"
     store = SqlAlchemyStore(db_uri, "artifact_folder")
     yield (store, db_uri)
     os.remove(temp_dbfile)
@@ -117,7 +117,7 @@ def sqlite_store():
 @pytest.fixture(scope="function")
 def file_store():
     ROOT_LOCATION = os.path.join(tempfile.gettempdir(), "test_mlflow_gc")
-    file_store_uri = "file:///%s" % ROOT_LOCATION
+    file_store_uri = f"file:///{ROOT_LOCATION}"
     yield (FileStore(ROOT_LOCATION), file_store_uri)
     shutil.rmtree(ROOT_LOCATION)
 
@@ -197,6 +197,7 @@ def test_mlflow_gc_not_deleted_run(file_store):
     ],
 )
 def test_mlflow_models_serve(enable_mlserver):
+
     class MyModel(pyfunc.PythonModel):
         def predict(self, context, model_input):  # pylint: disable=unused-variable
             return np.array([1, 2, 3])
@@ -220,12 +221,7 @@ def test_mlflow_models_serve(enable_mlserver):
 
     data = pd.DataFrame({"a": [0]})
 
-    extra_args = ["--no-conda"]
-    if enable_mlserver:
-        # When MLServer is enabled, we want to use Conda to ensure Python 3.7
-        # is used
-        extra_args = ["--enable-mlserver"]
-
+    extra_args = ["--enable-mlserver"] if enable_mlserver else ["--no-conda"]
     scoring_response = pyfunc_serve_and_score_model(
         model_uri=model_uri,
         data=data,

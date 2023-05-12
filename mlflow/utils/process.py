@@ -28,7 +28,7 @@ def exec_cmd(
     """
     cmd_env = os.environ.copy()
     if env:
-        cmd_env.update(env)
+        cmd_env |= env
 
     if stream_output:
         child = subprocess.Popen(
@@ -37,7 +37,7 @@ def exec_cmd(
         child.communicate(cmd_stdin)
         exit_code = child.wait()
         if throw_on_error and exit_code != 0:
-            raise ShellCommandException("Non-zero exitcode: %s" % (exit_code))
+            raise ShellCommandException(f"Non-zero exitcode: {exit_code}")
         return exit_code
     else:
         child = subprocess.Popen(

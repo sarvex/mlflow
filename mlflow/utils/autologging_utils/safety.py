@@ -356,26 +356,26 @@ def safe_patch(
         # `contextlib.ContextDecorator`, which creates generator expressions that cannot be pickled
         # during model serialization by ML frameworks such as scikit-learn
         is_silent_mode = get_autologging_config(autologging_integration, "silent", False)
-        with set_mlflow_events_and_warnings_behavior_globally(
-            # MLflow warnings emitted during autologging training sessions are likely not
-            # actionable and result from the autologging implementation invoking another MLflow
-            # API. Accordingly, we reroute these warnings to the MLflow event logger with level
-            # WARNING For reference, see recommended warning and event logging behaviors from
-            # https://docs.python.org/3/howto/logging.html#when-to-use-logging
-            reroute_warnings=True,
-            disable_event_logs=is_silent_mode,
-            disable_warnings=is_silent_mode,
-        ), set_non_mlflow_warnings_behavior_for_current_thread(
-            # non-MLflow Warnings emitted during the autologging preamble (before the original /
-            # underlying ML function is called) and postamble (after the original / underlying ML
-            # function is called) are likely not actionable and result from the autologging
-            # implementation invoking an API from a dependent library. Accordingly, we reroute
-            # these warnings to the MLflow event logger with level WARNING. For reference, see
-            # recommended warning and event logging behaviors from
-            # https://docs.python.org/3/howto/logging.html#when-to-use-logging
-            reroute_warnings=True,
-            disable_warnings=is_silent_mode,
-        ):
+        with (set_mlflow_events_and_warnings_behavior_globally(
+                    # MLflow warnings emitted during autologging training sessions are likely not
+                    # actionable and result from the autologging implementation invoking another MLflow
+                    # API. Accordingly, we reroute these warnings to the MLflow event logger with level
+                    # WARNING For reference, see recommended warning and event logging behaviors from
+                    # https://docs.python.org/3/howto/logging.html#when-to-use-logging
+                    reroute_warnings=True,
+                    disable_event_logs=is_silent_mode,
+                    disable_warnings=is_silent_mode,
+                ), set_non_mlflow_warnings_behavior_for_current_thread(
+                    # non-MLflow Warnings emitted during the autologging preamble (before the original /
+                    # underlying ML function is called) and postamble (after the original / underlying ML
+                    # function is called) are likely not actionable and result from the autologging
+                    # implementation invoking an API from a dependent library. Accordingly, we reroute
+                    # these warnings to the MLflow event logger with level WARNING. For reference, see
+                    # recommended warning and event logging behaviors from
+                    # https://docs.python.org/3/howto/logging.html#when-to-use-logging
+                    reroute_warnings=True,
+                    disable_warnings=is_silent_mode,
+                )):
 
             if is_testing():
                 preexisting_run_for_testing = mlflow.active_run()
@@ -539,9 +539,9 @@ def safe_patch(
                 if is_testing() and not preexisting_run_for_testing:
                     # If an MLflow run was created during the execution of patch code, verify that
                     # it is no longer active and that it contains expected autologging tags
-                    assert not mlflow.active_run(), (
-                        "Autologging integration %s leaked an active run" % autologging_integration
-                    )
+                    assert (
+                        not mlflow.active_run()
+                    ), f"Autologging integration {autologging_integration} leaked an active run"
                     if patch_function_run_for_testing:
                         _validate_autologging_run(
                             autologging_integration, patch_function_run_for_testing.info.run_id
@@ -720,7 +720,7 @@ def _store_patch(autologging_integration, patch):
     if autologging_integration in _AUTOLOGGING_PATCHES:
         _AUTOLOGGING_PATCHES[autologging_integration].add(patch)
     else:
-        _AUTOLOGGING_PATCHES[autologging_integration] = set([patch])
+        _AUTOLOGGING_PATCHES[autologging_integration] = {patch}
 
 
 def _validate_autologging_run(autologging_integration, run_id):
@@ -734,13 +734,12 @@ def _validate_autologging_run(autologging_integration, run_id):
     client = MlflowClient()
     run = client.get_run(run_id)
     autologging_tag_value = run.data.tags.get(MLFLOW_AUTOLOGGING)
-    assert autologging_tag_value == autologging_integration, (
-        "Autologging run with id {} failed to set autologging tag with expected value. Expected: "
-        "'{}', Actual: '{}'".format(run_id, autologging_integration, autologging_tag_value)
-    )
+    assert (
+        autologging_tag_value == autologging_integration
+    ), f"Autologging run with id {run_id} failed to set autologging tag with expected value. Expected: '{autologging_integration}', Actual: '{autologging_tag_value}'"
     assert RunStatus.is_terminated(
         RunStatus.from_string(run.info.status)
-    ), "Autologging run with id {} has a non-terminal status '{}'".format(run_id, run.info.status)
+    ), f"Autologging run with id {run_id} has a non-terminal status '{run.info.status}'"
 
 
 def _validate_args(

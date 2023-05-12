@@ -125,10 +125,8 @@ def save_model(
 
     # Save the pyfunc flavor if at least one text categorizer in spaCy pipeline
     if any(
-        [
-            isinstance(pipe_component[1], spacy.pipeline.TextCategorizer)
-            for pipe_component in spacy_model.pipeline
-        ]
+        isinstance(pipe_component[1], spacy.pipeline.TextCategorizer)
+        for pipe_component in spacy_model.pipeline
     ):
         pyfunc.add_to_model(
             mlflow_model,

@@ -62,23 +62,23 @@ def _read_log_model_allowlist():
         )
         return _read_log_model_allowlist_from_file(builtin_allowlist_file)
 
-    allowlist_file = spark_session.sparkContext._conf.get(
-        "spark.mlflow.pysparkml.autolog.logModelAllowlistFile", None
-    )
-    if allowlist_file:
-        try:
-            return _read_log_model_allowlist_from_file(allowlist_file)
-        except Exception:
-            # fallback to built-in allowlist file
-            _logger.exception(
-                (
-                    "Reading from custom log_models allowlist file %s failed, "
-                    "fallback to built-in allowlist file."
-                ),
-                allowlist_file,
-            )
-            return _read_log_model_allowlist_from_file(builtin_allowlist_file)
-    else:
+    if not (
+        allowlist_file := spark_session.sparkContext._conf.get(
+            "spark.mlflow.pysparkml.autolog.logModelAllowlistFile", None
+        )
+    ):
+        return _read_log_model_allowlist_from_file(builtin_allowlist_file)
+    try:
+        return _read_log_model_allowlist_from_file(allowlist_file)
+    except Exception:
+        # fallback to built-in allowlist file
+        _logger.exception(
+            (
+                "Reading from custom log_models allowlist file %s failed, "
+                "fallback to built-in allowlist file."
+            ),
+            allowlist_file,
+        )
         return _read_log_model_allowlist_from_file(builtin_allowlist_file)
 
 
@@ -271,7 +271,7 @@ def _get_instance_param_map_recursively(instance, level, uid_to_indexed_name_map
     if level == 0:
         logged_param_name_prefix = ""
     else:
-        logged_param_name_prefix = uid_to_indexed_name_map[instance.uid] + "."
+        logged_param_name_prefix = f"{uid_to_indexed_name_map[instance.uid]}."
 
     for param_name, param_value in param_map.items():
         logged_param_name = logged_param_name_prefix + param_name
@@ -284,7 +284,7 @@ def _get_instance_param_map_recursively(instance, level, uid_to_indexed_name_map
                 stage_param_map = _get_instance_param_map_recursively(
                     stage, level + 1, uid_to_indexed_name_map
                 )
-                expanded_param_map.update(stage_param_map)
+                expanded_param_map |= stage_param_map
         elif is_parameter_search_estimator and param_name == "estimator":
             expanded_param_map[logged_param_name] = uid_to_indexed_name_map[param_value.uid]
             # skip log estimator's nested params because they will be logged as JSON artifact,
@@ -330,8 +330,8 @@ def _create_child_runs_for_parameter_search(parent_estimator, parent_model, pare
     for i in range(len(estimator_param_maps)):
         child_estimator = tuned_estimator.copy(estimator_param_maps[i])
         tags_to_log = dict(child_tags) if child_tags else {}
-        tags_to_log.update({MLFLOW_PARENT_RUN_ID: parent_run.info.run_id})
-        tags_to_log.update(_get_estimator_info_tags(child_estimator))
+        tags_to_log[MLFLOW_PARENT_RUN_ID] = parent_run.info.run_id
+        tags_to_log |= _get_estimator_info_tags(child_estimator)
 
         child_run = client.create_run(
             experiment_id=parent_run.info.experiment_id,
@@ -374,7 +374,7 @@ def _log_parameter_search_results_as_artifact(param_maps, metrics_dict, run_id):
 
     result_dict = defaultdict(list)
     result_dict["params"] = []
-    result_dict.update(metrics_dict)
+    result_dict |= metrics_dict
     for param_map in param_maps:
         result_dict["params"].append(json.dumps(param_map))
         for param_name, param_value in param_map.items():
@@ -429,9 +429,9 @@ def _get_param_search_metrics_and_best_index(param_search_estimator, param_searc
     metric_key = param_search_estimator.getEvaluator().getMetricName()
     if isinstance(param_search_model, CrossValidatorModel):
         avg_metrics = param_search_model.avgMetrics
-        metrics_dict["avg_" + metric_key] = avg_metrics
+        metrics_dict[f"avg_{metric_key}"] = avg_metrics
         if hasattr(param_search_model, "stdMetrics"):
-            metrics_dict["std_" + metric_key] = param_search_model.stdMetrics
+            metrics_dict[f"std_{metric_key}"] = param_search_model.stdMetrics
     elif isinstance(param_search_model, TrainValidationSplitModel):
         avg_metrics = param_search_model.validationMetrics
         metrics_dict[metric_key] = avg_metrics
@@ -546,13 +546,7 @@ class _AutologgingMetricsManager:
     @staticmethod
     def gen_name_with_index(name, index):
         assert index >= 0
-        if index == 0:
-            return name
-        else:
-            # Use '-' as the separator between name and index,
-            # The '-' is not valid character in python var name
-            # so it can prevent name conflicts after appending index.
-            return f"{name}-{index + 1}"
+        return name if index == 0 else f"{name}-{index + 1}"
 
     def register_prediction_input_dataset(self, model, eval_dataset):
         """
@@ -575,13 +569,14 @@ class _AutologgingMetricsManager:
         run_id = self.get_run_id_for_model(model)
         registered_dataset_list = self._eval_dataset_info_map[run_id][eval_dataset_name]
 
-        for i, id_i in enumerate(registered_dataset_list):
-            if eval_dataset_id == id_i:
-                index = i
-                break
-        else:
-            index = len(registered_dataset_list)
-
+        index = next(
+            (
+                i
+                for i, id_i in enumerate(registered_dataset_list)
+                if eval_dataset_id == id_i
+            ),
+            len(registered_dataset_list),
+        )
         if index == len(registered_dataset_list):
             # register new eval dataset
             registered_dataset_list.append(eval_dataset_id)
@@ -681,7 +676,7 @@ def autolog(
     disable_for_unsupported_versions=False,
     silent=False,
     log_post_training_metrics=True,
-):  # pylint: disable=unused-argument
+):    # pylint: disable=unused-argument
     """
     Enables (or disables) and configures autologging for pyspark ml estimators.
     This method is not threadsafe.
@@ -962,35 +957,35 @@ def autolog(
             return original(self, *args, **kwargs)
 
     def patched_evaluate(original, self, *args, **kwargs):
-        if _AUTOLOGGING_METRICS_MANAGER.should_log_post_training_metrics():
-            with _AUTOLOGGING_METRICS_MANAGER.disable_log_post_training_metrics():
-                metric = original(self, *args, **kwargs)
-
-            if _AUTOLOGGING_METRICS_MANAGER.is_metric_value_loggable(metric):
-                params = get_method_call_arg_value(1, "params", None, args, kwargs)
-                # we need generate evaluator param map so we call `self.copy(params)` to construct
-                # an evaluator with the extra evaluation params.
-                evaluator = self.copy(params) if params is not None else self
-                metric_name = evaluator.getMetricName()
-                evaluator_info = _AUTOLOGGING_METRICS_MANAGER.gen_evaluator_info(evaluator)
-
-                pred_result_dataset = get_method_call_arg_value(0, "dataset", None, args, kwargs)
-                (
-                    run_id,
-                    dataset_name,
-                ) = _AUTOLOGGING_METRICS_MANAGER.get_run_id_and_dataset_name_for_evaluator_call(
-                    pred_result_dataset
-                )
-                if run_id and dataset_name:
-                    metric_key = _AUTOLOGGING_METRICS_MANAGER.register_evaluator_call(
-                        run_id, metric_name, dataset_name, evaluator_info
-                    )
-                    _AUTOLOGGING_METRICS_MANAGER.log_post_training_metric(
-                        run_id, metric_key, metric
-                    )
-            return metric
-        else:
+        if not _AUTOLOGGING_METRICS_MANAGER.should_log_post_training_metrics():
             return original(self, *args, **kwargs)
+
+        with _AUTOLOGGING_METRICS_MANAGER.disable_log_post_training_metrics():
+            metric = original(self, *args, **kwargs)
+
+        if _AUTOLOGGING_METRICS_MANAGER.is_metric_value_loggable(metric):
+            params = get_method_call_arg_value(1, "params", None, args, kwargs)
+            # we need generate evaluator param map so we call `self.copy(params)` to construct
+            # an evaluator with the extra evaluation params.
+            evaluator = self.copy(params) if params is not None else self
+            metric_name = evaluator.getMetricName()
+            evaluator_info = _AUTOLOGGING_METRICS_MANAGER.gen_evaluator_info(evaluator)
+
+            pred_result_dataset = get_method_call_arg_value(0, "dataset", None, args, kwargs)
+            (
+                run_id,
+                dataset_name,
+            ) = _AUTOLOGGING_METRICS_MANAGER.get_run_id_and_dataset_name_for_evaluator_call(
+                pred_result_dataset
+            )
+            if run_id and dataset_name:
+                metric_key = _AUTOLOGGING_METRICS_MANAGER.register_evaluator_call(
+                    run_id, metric_name, dataset_name, evaluator_info
+                )
+                _AUTOLOGGING_METRICS_MANAGER.log_post_training_metric(
+                    run_id, metric_key, metric
+                )
+        return metric
 
     safe_patch(
         AUTOLOGGING_INTEGRATION_NAME, Estimator, "fit", patched_fit, manage_run=True,

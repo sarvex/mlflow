@@ -260,7 +260,7 @@ def log_model(
         mlflow.tracking.fluent.log_artifacts(tmp_model_metadata_dir, artifact_path)
         if registered_model_name is not None:
             mlflow.register_model(
-                "runs:/%s/%s" % (run_id, artifact_path),
+                f"runs:/{run_id}/{artifact_path}",
                 registered_model_name,
                 await_registration_for,
             )
@@ -334,7 +334,7 @@ class _HadoopFileSystem:
         """
         local_path = cls._local_path(src)
         qualified_local_path = cls._fs().makeQualified(local_path).toString()
-        if qualified_local_path == "file:" + local_path.toString():
+        if qualified_local_path == f"file:{local_path.toString()}":
             return local_path.toString()
         cls.copy_from_local_file(src, dst, remove_src=False)
         _logger.info("Copied SparkML model to %s", dst)

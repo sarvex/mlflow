@@ -61,19 +61,14 @@ def clean_up_leaked_runs():
         yield
         assert (
             not mlflow.active_run()
-        ), "test case unexpectedly leaked a run. Run info: {}. Run data: {}".format(
-            mlflow.active_run().info, mlflow.active_run().data
-        )
+        ), f"test case unexpectedly leaked a run. Run info: {mlflow.active_run().info}. Run data: {mlflow.active_run().data}"
     finally:
         while mlflow.active_run():
             mlflow.end_run()
 
 
 def _called_in_save_model():
-    for frame in inspect.stack()[::-1]:
-        if frame.function == "save_model":
-            return True
-    return False
+    return any(frame.function == "save_model" for frame in inspect.stack()[::-1])
 
 
 @pytest.fixture(autouse=True)

@@ -247,17 +247,12 @@ def start_run(
             and _active_experiment_id != active_run_obj.info.experiment_id
         ):
             raise MlflowException(
-                "Cannot start run with ID {} because active run ID "
-                "does not match environment run ID. Make sure --experiment-name "
-                "or --experiment-id matches experiment set with "
-                "set_experiment(), or just use command-line "
-                "arguments".format(existing_run_id)
+                f"Cannot start run with ID {existing_run_id} because active run ID does not match environment run ID. Make sure --experiment-name or --experiment-id matches experiment set with set_experiment(), or just use command-line arguments"
             )
         # Check to see if current run isn't deleted
         if active_run_obj.info.lifecycle_stage == LifecycleStage.DELETED:
             raise MlflowException(
-                "Cannot start run with ID {} because it is in the "
-                "deleted state.".format(existing_run_id)
+                f"Cannot start run with ID {existing_run_id} because it is in the deleted state."
             )
         # Use previous end_time because a value is required for update_run_info
         end_time = active_run_obj.info.end_time
@@ -1180,16 +1175,15 @@ def search_runs(
         data = {}
         data.update(info)
         for key in metrics:
-            data["metrics." + key] = metrics[key]
+            data[f"metrics.{key}"] = metrics[key]
         for key in params:
-            data["params." + key] = params[key]
+            data[f"params.{key}"] = params[key]
         for key in tags:
-            data["tags." + key] = tags[key]
+            data[f"tags.{key}"] = tags[key]
         return pd.DataFrame(data)
     else:
         raise ValueError(
-            "Unsupported output format: %s. Supported string values are 'pandas' or 'list'"
-            % output_format
+            f"Unsupported output format: {output_format}. Supported string values are 'pandas' or 'list'"
         )
 
 
@@ -1296,9 +1290,7 @@ def _paginate(paginated_fn, max_results_per_page, max_results=None):
 
 
 def _get_or_start_run():
-    if len(_active_run_stack) > 0:
-        return _active_run_stack[-1]
-    return start_run()
+    return _active_run_stack[-1] if len(_active_run_stack) > 0 else start_run()
 
 
 def _get_experiment_id_from_env():
@@ -1522,9 +1514,7 @@ def autolog(
     # for each autolog library (except pyspark), register a post-import hook.
     # this way, we do not send any errors to the user until we know they are using the library.
     # the post-import hook also retroactively activates for previously-imported libraries.
-    for module in list(
-        set(LIBRARY_TO_AUTOLOG_FN.keys()) - set(["tensorflow", "keras", "pyspark", "pyspark.ml"])
-    ):
+    for module in list(set(LIBRARY_TO_AUTOLOG_FN.keys()) - {"tensorflow", "keras", "pyspark", "pyspark.ml"}):
         register_post_import_hook(setup_autologging, module, overwrite=True)
 
     FULLY_IMPORTED_KERAS = False

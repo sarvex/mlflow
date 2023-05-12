@@ -81,7 +81,6 @@ def cli():
     type=click.STRING,
     help="ID of the experiment under which to launch the run.",
 )
-# TODO: Add tracking server argument once we have it working.
 @click.option(
     "--backend",
     "-b",
@@ -158,12 +157,11 @@ def run(
         try:
             backend_config = json.loads(backend_config)
         except ValueError as e:
-            eprint("Invalid backend config JSON. Parse error: %s" % e)
+            eprint(f"Invalid backend config JSON. Parse error: {e}")
             raise
-    if backend == "kubernetes":
-        if backend_config is None:
-            eprint("Specify 'backend_config' when using kubernetes mode.")
-            sys.exit(1)
+    if backend == "kubernetes" and backend_config is None:
+        eprint("Specify 'backend_config' when using kubernetes mode.")
+        sys.exit(1)
     try:
         projects.run(
             uri,
@@ -203,7 +201,7 @@ def _user_args_to_dict(arguments, argument_type="P"):
             )
             sys.exit(1)
         if name in user_dict:
-            eprint("Repeated parameter: '%s'" % name)
+            eprint(f"Repeated parameter: '{name}'")
             sys.exit(1)
         user_dict[name] = value
     return user_dict
@@ -216,12 +214,11 @@ def _validate_server_args(gunicorn_opts=None, workers=None, waitress_opts=None):
                 "waitress replaces gunicorn on Windows, "
                 "cannot specify --gunicorn-opts or --workers"
             )
-    else:
-        if waitress_opts is not None:
-            raise NotImplementedError(
-                "gunicorn replaces waitress on non-Windows platforms, "
-                "cannot specify --waitress-opts"
-            )
+    elif waitress_opts is not None:
+        raise NotImplementedError(
+            "gunicorn replaces waitress on non-Windows platforms, "
+            "cannot specify --waitress-opts"
+        )
 
 
 @cli.command()
@@ -438,11 +435,7 @@ def gc(backend_store_uri, run_ids):
         raise MlflowException(
             "This cli can only be used with a backend that allows hard-deleting runs"
         )
-    if not run_ids:
-        run_ids = backend_store._get_deleted_runs()
-    else:
-        run_ids = run_ids.split(",")
-
+    run_ids = run_ids.split(",") if run_ids else backend_store._get_deleted_runs()
     for run_id in run_ids:
         run = backend_store.get_run(run_id)
         if run.info.lifecycle_stage != LifecycleStage.DELETED:
@@ -453,7 +446,7 @@ def gc(backend_store_uri, run_ids):
         artifact_repo = get_artifact_repository(run.info.artifact_uri)
         artifact_repo.delete_artifacts()
         backend_store._hard_delete_run(run_id)
-        print("Run with ID %s has been permanently deleted." % str(run_id))
+        print(f"Run with ID {str(run_id)} has been permanently deleted.")
 
 
 cli.add_command(mlflow.deployments.cli.commands)

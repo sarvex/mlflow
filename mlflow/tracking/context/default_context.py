@@ -22,16 +22,12 @@ def _get_user():
 
 
 def _get_main_file():
-    if len(sys.argv) > 0:
-        return sys.argv[0]
-    return None
+    return sys.argv[0] if len(sys.argv) > 0 else None
 
 
 def _get_source_name():
     main_file = _get_main_file()
-    if main_file is not None:
-        return main_file
-    return "<console>"
+    return main_file if main_file is not None else "<console>"
 
 
 def _get_source_type():

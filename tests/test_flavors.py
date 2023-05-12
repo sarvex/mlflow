@@ -10,14 +10,14 @@ def read_file(path):
 
 
 def is_model_flavor(src):
-    for node in ast.iter_child_nodes(ast.parse(src)):
-        if (
+    return any(
+        (
             isinstance(node, ast.Assign)
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == "FLAVOR_NAME"
-        ):
-            return True
-    return False
+        )
+        for node in ast.iter_child_nodes(ast.parse(src))
+    )
 
 
 def iter_flavor_names():
@@ -35,6 +35,6 @@ def iter_flavor_names():
 
 def test_all_flavors_can_be_accessed_from_mlflow():
     flavor_names = list(iter_flavor_names())
-    assert len(flavor_names) != 0
+    assert flavor_names
     for flavor_name in flavor_names:
         assert hasattr(mlflow, flavor_name)

@@ -21,7 +21,7 @@ def _user_args_to_dict(user_list):
                 "``--config key=value``",
             ) from exc
         if name in user_dict:
-            raise click.ClickException("Repeated parameter: '{}'".format(name))
+            raise click.ClickException(f"Repeated parameter: '{name}'")
         user_dict[name] = value
     return user_dict
 
@@ -130,7 +130,9 @@ def create_deployment(flavor, model_uri, target, name, config):
     config_dict = _user_args_to_dict(config)
     client = interface.get_deploy_client(target)
     deployment = client.create_deployment(name, model_uri, flavor, config=config_dict)
-    click.echo("\n{} deployment {} is created".format(deployment["flavor"], deployment["name"]))
+    click.echo(
+        f'\n{deployment["flavor"]} deployment {deployment["name"]} is created'
+    )
 
 
 @commands.command("update")
@@ -164,7 +166,7 @@ def update_deployment(flavor, model_uri, target, name, config):
     config_dict = _user_args_to_dict(config)
     client = interface.get_deploy_client(target)
     ret = client.update_deployment(name, model_uri=model_uri, flavor=flavor, config=config_dict)
-    click.echo("Deployment {} is updated (with flavor {})".format(name, ret["flavor"]))
+    click.echo(f'Deployment {name} is updated (with flavor {ret["flavor"]})')
 
 
 @commands.command("delete")
@@ -176,7 +178,7 @@ def delete_deployment(target, name):
     """
     client = interface.get_deploy_client(target)
     client.delete_deployment(name)
-    click.echo("Deployment {} is deleted".format(name))
+    click.echo(f"Deployment {name} is deleted")
 
 
 @commands.command("list")
@@ -188,7 +190,7 @@ def list_deployment(target):
     """
     client = interface.get_deploy_client(target)
     ids = client.list_deployments()
-    click.echo("List of all deployments:\n{}".format(ids))
+    click.echo(f"List of all deployments:\n{ids}")
 
 
 @commands.command("get")
@@ -202,7 +204,7 @@ def get_deployment(target, name):
     client = interface.get_deploy_client(target)
     desc = client.get_deployment(name)
     for key, val in desc.items():
-        click.echo("{}: {}".format(key, val))
+        click.echo(f"{key}: {val}")
     click.echo("\n")
 
 

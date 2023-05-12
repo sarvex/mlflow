@@ -85,11 +85,9 @@ def test_autologging_integrations_expose_configs_and_support_disablement(integra
 @pytest.mark.parametrize("integration", AUTOLOGGING_INTEGRATIONS_TO_TEST.keys())
 def test_autologging_integrations_use_safe_patch_for_monkey_patching(integration):
     for integration in AUTOLOGGING_INTEGRATIONS_TO_TEST:
-        with mock.patch(
-            "mlflow.utils.gorilla.apply", wraps=gorilla.apply
-        ) as gorilla_mock, mock.patch(
-            integration.__name__ + ".safe_patch", wraps=safe_patch
-        ) as safe_patch_mock:
+        with (mock.patch(
+                    "mlflow.utils.gorilla.apply", wraps=gorilla.apply
+                ) as gorilla_mock, mock.patch(f"{integration.__name__}.safe_patch", wraps=safe_patch) as safe_patch_mock):
             integration.autolog(disable=False)
             assert safe_patch_mock.call_count > 0
             # `safe_patch` leverages `gorilla.apply` in its implementation. Accordingly, we expect
@@ -251,7 +249,7 @@ def test_autolog_respects_silent_mode(tmpdir):
             e = executor.submit(train_model)
             executions.append(e)
 
-    assert all([e.result() is True for e in executions])
+    assert all(e.result() is True for e in executions)
     assert not stream.getvalue()
     # Verify that `warnings.showwarning` was restored to its original value after training
     # and that MLflow event logs are enabled
@@ -269,7 +267,7 @@ def test_autolog_respects_silent_mode(tmpdir):
             e = executor.submit(train_model)
             executions.append(e)
 
-    assert all([e.result() is True for e in executions])
+    assert all(e.result() is True for e in executions)
     assert stream.getvalue()
     # Verify that `warnings.showwarning` was restored to its original value after training
     # and that MLflow event logs are enabled

@@ -194,7 +194,8 @@ def save_model(
 
     if os.path.exists(path):
         raise MlflowException(
-            message="Path '{}' already exists".format(path), error_code=RESOURCE_ALREADY_EXISTS
+            message=f"Path '{path}' already exists",
+            error_code=RESOURCE_ALREADY_EXISTS,
         )
 
     os.makedirs(path)
@@ -296,7 +297,7 @@ def load_model(model_uri, model=None, dst_path=None, **kwargs):
         return paddle.jit.load(pd_model_artifacts_path, **kwargs)
     elif not isinstance(model, paddle.Model):
         raise TypeError(
-            "Invalid object type `{}` for `model`, must be `paddle.Model`".format(type(model))
+            f"Invalid object type `{type(model)}` for `model`, must be `paddle.Model`"
         )
     else:
         contains_pdparams = _contains_pdparams(local_model_path)

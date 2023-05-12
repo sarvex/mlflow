@@ -19,7 +19,7 @@ class S3ArtifactRepository(ArtifactRepository):
         """Parse an S3 URI, returning (bucket, path)"""
         parsed = urllib.parse.urlparse(uri)
         if parsed.scheme != "s3":
-            raise Exception("Not an S3 URI: %s" % uri)
+            raise Exception(f"Not an S3 URI: {uri}")
         path = parsed.path
         if path.startswith("/"):
             path = path[1:]
@@ -29,8 +29,9 @@ class S3ArtifactRepository(ArtifactRepository):
     def get_s3_file_upload_extra_args():
         import json
 
-        s3_file_upload_extra_args = os.environ.get("MLFLOW_S3_UPLOAD_EXTRA_ARGS")
-        if s3_file_upload_extra_args:
+        if s3_file_upload_extra_args := os.environ.get(
+            "MLFLOW_S3_UPLOAD_EXTRA_ARGS"
+        ):
             return json.loads(s3_file_upload_extra_args)
         else:
             return None
@@ -40,12 +41,10 @@ class S3ArtifactRepository(ArtifactRepository):
         from botocore.client import Config
 
         s3_endpoint_url = os.environ.get("MLFLOW_S3_ENDPOINT_URL")
-        ignore_tls = os.environ.get("MLFLOW_S3_IGNORE_TLS")
-
-        do_verify = True
-        if ignore_tls:
+        if ignore_tls := os.environ.get("MLFLOW_S3_IGNORE_TLS"):
             do_verify = ignore_tls.lower() not in ["true", "yes", "1"]
-
+        else:
+            do_verify = True
         # The valid verify argument value is None/False/path to cert bundle file, See
         # https://github.com/boto/boto3/blob/73865126cad3938ca80a2f567a1c79cb248169a7/
         # boto3/session.py#L212
@@ -68,7 +67,7 @@ class S3ArtifactRepository(ArtifactRepository):
         )
 
     def _upload_file(self, s3_client, local_file, bucket, key):
-        extra_args = dict()
+        extra_args = {}
         guessed_type, guessed_encoding = guess_type(local_file)
         if guessed_type is not None:
             extra_args["ContentType"] = guessed_type
@@ -76,7 +75,7 @@ class S3ArtifactRepository(ArtifactRepository):
             extra_args["ContentEncoding"] = guessed_encoding
         environ_extra_args = self.get_s3_file_upload_extra_args()
         if environ_extra_args is not None:
-            extra_args.update(environ_extra_args)
+            extra_args |= environ_extra_args
         s3_client.upload_file(Filename=local_file, Bucket=bucket, Key=key, ExtraArgs=extra_args)
 
     def log_artifact(self, local_file, artifact_path=None):
@@ -114,7 +113,7 @@ class S3ArtifactRepository(ArtifactRepository):
         if path:
             dest_path = posixpath.join(dest_path, path)
         infos = []
-        prefix = dest_path + "/" if dest_path else ""
+        prefix = f"{dest_path}/" if dest_path else ""
         s3_client = self._get_s3_client()
         paginator = s3_client.get_paginator("list_objects_v2")
         results = paginator.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/")

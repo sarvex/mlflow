@@ -26,7 +26,7 @@ def deprecated(alternative=None, since=None, impact=None):
     """
 
     def deprecated_decorator(func):
-        since_str = " since %s" % since if since else ""
+        since_str = f" since {since}" if since else ""
         impact_str = impact if impact else "This method will be removed in a near future release."
 
         notice = "``{function_name}`` is deprecated{since_string}. {impact}".format(
@@ -35,7 +35,7 @@ def deprecated(alternative=None, since=None, impact=None):
             impact=impact_str,
         )
         if alternative is not None and alternative.strip():
-            notice += " Use ``%s`` instead." % alternative
+            notice += f" Use ``{alternative}`` instead."
 
         @wraps(func)
         def deprecated_func(*args, **kwargs):
@@ -43,7 +43,7 @@ def deprecated(alternative=None, since=None, impact=None):
             return func(*args, **kwargs)
 
         if func.__doc__ is not None:
-            deprecated_func.__doc__ = ".. Warning:: " + notice + "\n" + func.__doc__
+            deprecated_func.__doc__ = f".. Warning:: {notice}" + "\n" + func.__doc__
 
         return deprecated_func
 
@@ -57,8 +57,8 @@ def keyword_only(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if len(args) > 0:
-            raise TypeError("Method %s only takes keyword arguments." % func.__name__)
+        if args:
+            raise TypeError(f"Method {func.__name__} only takes keyword arguments.")
         return func(**kwargs)
 
     notice = ".. Note:: This method requires all argument be specified by keyword.\n"

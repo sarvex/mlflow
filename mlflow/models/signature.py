@@ -36,12 +36,11 @@ class ModelSignature(object):
     def __init__(self, inputs: Schema, outputs: Schema = None):
         if not isinstance(inputs, Schema):
             raise TypeError(
-                "inputs must be mlflow.models.signature.Schema, got '{}'".format(type(inputs))
+                f"inputs must be mlflow.models.signature.Schema, got '{type(inputs)}'"
             )
         if outputs is not None and not isinstance(outputs, Schema):
             raise TypeError(
-                "outputs must be either None or mlflow.models.signature.Schema, "
-                "got '{}'".format(type(inputs))
+                f"outputs must be either None or mlflow.models.signature.Schema, got '{type(inputs)}'"
             )
         self.inputs = inputs
         self.outputs = outputs
@@ -73,11 +72,10 @@ class ModelSignature(object):
         :return: ModelSignature populated with the data form the dictionary.
         """
         inputs = Schema.from_json(signature_dict["inputs"])
-        if "outputs" in signature_dict and signature_dict["outputs"] is not None:
-            outputs = Schema.from_json(signature_dict["outputs"])
-            return cls(inputs, outputs)
-        else:
+        if "outputs" not in signature_dict or signature_dict["outputs"] is None:
             return cls(inputs)
+        outputs = Schema.from_json(signature_dict["outputs"])
+        return cls(inputs, outputs)
 
     def __eq__(self, other) -> bool:
         return (
@@ -87,12 +85,7 @@ class ModelSignature(object):
         )
 
     def __repr__(self) -> str:
-        return (
-            "inputs: \n"
-            "  {}\n"
-            "outputs: \n"
-            "  {}\n".format(repr(self.inputs), repr(self.outputs))
-        )
+        return f"inputs: \n  {repr(self.inputs)}\noutputs: \n  {repr(self.outputs)}\n"
 
 
 def infer_signature(

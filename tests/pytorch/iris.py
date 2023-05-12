@@ -86,5 +86,3 @@ class IrisClassificationWithoutValidation(IrisClassificationBase):
         self.log("test_acc", self.test_acc.compute())
 
 
-if __name__ == "__main__":
-    pass

@@ -84,10 +84,7 @@ def _truncate_and_ellipsize(value, max_length):
     maximum length, if necessary. The end of the string is ellipsized if truncation occurs
     """
     value = str(value)
-    if len(value) > max_length:
-        return value[: (max_length - 3)] + "..."
-    else:
-        return value
+    return f"{value[:max_length - 3]}..." if len(value) > max_length else value
 
 
 def _truncate_dict(d, max_key_length=None, max_value_length=None):
@@ -109,13 +106,13 @@ def _truncate_dict(d, max_key_length=None, max_value_length=None):
         new_k = _truncate_and_ellipsize(k, max_key_length) if should_truncate_key else k
         if should_truncate_key:
             # Use the truncated key for warning logs to avoid noisy printing to stdout
-            msg = "Truncated the key `{}`".format(new_k)
+            msg = f"Truncated the key `{new_k}`"
             _logger.warning(msg)
 
         new_v = _truncate_and_ellipsize(v, max_value_length) if should_truncate_val else v
         if should_truncate_val:
             # Use the truncated key and value for warning logs to avoid noisy printing to stdout
-            msg = "Truncated the value of the key `{}`. Truncated value: `{}`".format(new_k, new_v)
+            msg = f"Truncated the value of the key `{new_k}`. Truncated value: `{new_v}`"
             _logger.warning(msg)
 
         truncated[new_k] = new_v
@@ -127,7 +124,7 @@ def _get_fully_qualified_class_name(obj):
     """
     Obtains the fully qualified class name of the given object.
     """
-    return obj.__class__.__module__ + "." + obj.__class__.__name__
+    return f"{obj.__class__.__module__}.{obj.__class__.__name__}"
 
 
 def _inspect_original_var_name(var, fallback_name):

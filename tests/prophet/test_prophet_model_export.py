@@ -53,10 +53,12 @@ class DataGeneration:
         seasonal = [
             np.polyval([-5.0, -1.0], x) for x in np.linspace(start=0, stop=2, num=self.size)
         ]
-        series = (
-            np.linspace(start=45.0, stop=90.0, num=self.size) + base + seasonal + self._period_gen()
+        return (
+            np.linspace(start=45.0, stop=90.0, num=self.size)
+            + base
+            + seasonal
+            + self._period_gen()
         )
-        return series
 
     def _generate_linear_data(self):
         DataStruct = namedtuple("DataStruct", "dates, series")
@@ -166,7 +168,7 @@ def test_signature_and_examples_saved_correctly(prophet_model):
     model = prophet_model.model
     horizon_df = future_horizon_df(model, FORECAST_HORIZON)
     signature_ = infer_signature(data, model.predict(horizon_df))
-    example_ = data[0:5].copy(deep=False)
+    example_ = data[:5].copy(deep=False)
     example_["y"] = pd.to_numeric(example_["y"])  # cast to appropriate precision
     for signature in (None, signature_):
         for example in (None, example_):

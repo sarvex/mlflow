@@ -155,7 +155,7 @@ def test_build_image_with_remote_uri_calls_expected_azure_routines(
     artifact_root = "s3://{bucket_name}".format(bucket_name=mock_s3_bucket)
     s3_artifact_repo = S3ArtifactRepository(artifact_root)
     s3_artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
 
     with AzureMLMocks() as aml_mocks:
         workspace = get_azure_workspace()
@@ -718,7 +718,7 @@ def test_cli_build_image_with_remote_uri_calls_expected_azure_routines(
     artifact_root = "s3://{bucket_name}".format(bucket_name=mock_s3_bucket)
     s3_artifact_repo = S3ArtifactRepository(artifact_root)
     s3_artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
 
     with AzureMLMocks() as aml_mocks:
         result = CliRunner(env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}).invoke(

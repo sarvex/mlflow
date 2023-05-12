@@ -79,7 +79,7 @@ def get_mlflow_run_params_for_fn_args(fn, args, kwargs, unlogged=None):
         for param_info, param_val in zip(list(relevant_params)[: len(args)], args)
     }
     # Add all user-specified keyword arguments to the set of parameters to log
-    params_to_log.update(kwargs)
+    params_to_log |= kwargs
     # Add parameters that were not explicitly specified by the caller to the mapping,
     # using their default values
     params_to_log.update(
@@ -160,7 +160,7 @@ def resolve_input_example_and_signature(
             input_example = get_input_example()
         except Exception as e:
             input_example_failure_msg = str(e)
-            input_example_user_msg = "Failed to gather input example: " + str(e)
+            input_example_user_msg = f"Failed to gather input example: {str(e)}"
 
     model_signature = None
     model_signature_user_msg = None
@@ -168,11 +168,11 @@ def resolve_input_example_and_signature(
         try:
             if input_example is None:
                 raise Exception(
-                    "could not sample data to infer model signature: " + input_example_failure_msg
+                    f"could not sample data to infer model signature: {input_example_failure_msg}"
                 )
             model_signature = infer_model_signature(input_example)
         except Exception as e:
-            model_signature_user_msg = "Failed to infer model signature: " + str(e)
+            model_signature_user_msg = f"Failed to infer model signature: {str(e)}"
 
     if log_input_example and input_example_user_msg is not None:
         logger.warning(input_example_user_msg)
@@ -229,13 +229,10 @@ class BatchMetricsLogger:
 
     def _should_flush(self):
         target_training_to_logging_time_ratio = 10
-        if (
+        return (
             self.total_training_time
             >= self.total_log_batch_time * target_training_to_logging_time_ratio
-        ):
-            return True
-
-        return False
+        )
 
     def record_metrics(self, metrics, step=None):
         """
@@ -367,15 +364,12 @@ def autologging_integration(name):
             config_to_store.update(kwargs)
             AUTOLOGGING_INTEGRATIONS[name] = config_to_store
 
-            try:
+            with contextlib.suppress(Exception):
                 # Pass `autolog()` arguments to `log_autolog_called` in keyword format to enable
                 # event loggers to more easily identify important configuration parameters
                 # (e.g., `disable`) without examining positional arguments. Passing positional
                 # arguments to `log_autolog_called` is deprecated in MLflow > 1.13.1
                 AutologgingEventLogger.get_logger().log_autolog_called(name, (), config_to_store)
-            except Exception:
-                pass
-
             revert_patches(name)
 
             # If disabling autologging using fluent api, then every active integration's autolog
@@ -447,8 +441,9 @@ def autologging_is_disabled(integration_name):
 
     :param integration_name: An autologging integration flavor name.
     """
-    explicit_disabled = get_autologging_config(integration_name, "disable", True)
-    if explicit_disabled:
+    if explicit_disabled := get_autologging_config(
+        integration_name, "disable", True
+    ):
         return True
 
     if (
@@ -560,14 +555,13 @@ def get_instance_method_first_arg_value(method, call_pos_args, call_kwargs):
     """
     if len(call_pos_args) >= 1:
         return call_pos_args[0]
-    else:
-        param_sig = inspect.signature(method).parameters
-        first_arg_name = list(param_sig.keys())[1]
-        assert param_sig[first_arg_name].kind not in [
-            inspect.Parameter.VAR_KEYWORD,
-            inspect.Parameter.VAR_POSITIONAL,
-        ]
-        return call_kwargs.get(first_arg_name)
+    param_sig = inspect.signature(method).parameters
+    first_arg_name = list(param_sig.keys())[1]
+    assert param_sig[first_arg_name].kind not in [
+        inspect.Parameter.VAR_KEYWORD,
+        inspect.Parameter.VAR_POSITIONAL,
+    ]
+    return call_kwargs.get(first_arg_name)
 
 
 def get_method_call_arg_value(arg_index, arg_name, default_value, call_pos_args, call_kwargs):

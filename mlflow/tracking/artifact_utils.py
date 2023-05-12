@@ -79,7 +79,7 @@ def _download_artifact_from_uri(artifact_uri, output_path=None):
     prefix = ""
     if parsed_uri.scheme and not parsed_uri.path.startswith("/"):
         # relative path is a special case, urllib does not reconstruct it properly
-        prefix = parsed_uri.scheme + ":"
+        prefix = f"{parsed_uri.scheme}:"
         parsed_uri = parsed_uri._replace(scheme="")
 
     # For models:/ URIs, it doesn't make sense to initialize a ModelsArtifactRepository with only
@@ -126,7 +126,7 @@ def _upload_artifacts_to_databricks(
         dest_artifact_path = run_id if run_id else uuid4().hex
         # Allow uploading from the same run id multiple times by randomizing a suffix
         if len(dest_repo.list_artifacts(dest_artifact_path)) > 0:
-            dest_artifact_path = dest_artifact_path + "-" + uuid4().hex[0:4]
+            dest_artifact_path = f"{dest_artifact_path}-{uuid4().hex[:4]}"
         dest_repo.log_artifacts(local_dir, artifact_path=dest_artifact_path)
         dirname = pathlib.PurePath(source).name  # innermost directory name
         return posixpath.join(dest_root, dest_artifact_path, dirname)  # new source

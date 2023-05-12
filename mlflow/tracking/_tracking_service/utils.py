@@ -33,9 +33,7 @@ _tracking_uri = None
 
 def is_tracking_uri_set():
     """Returns True if the tracking URI has been set, False otherwise."""
-    if _tracking_uri or env.get_env(_TRACKING_URI_ENV_VAR):
-        return True
-    return False
+    return bool(_tracking_uri or env.get_env(_TRACKING_URI_ENV_VAR))
 
 
 def set_tracking_uri(uri: str) -> None:
@@ -181,16 +179,15 @@ def _get_git_url_if_present(uri):
         repo = Repo(uri, search_parent_directories=True)
 
         # Repo url
-        repo_url = "file://%s" % repo.working_tree_dir
+        repo_url = f"file://{repo.working_tree_dir}"
 
         # Sub directory
         rlpath = uri.replace(repo.working_tree_dir, "")
         if rlpath == "":
-            git_path = repo_url
+            return repo_url
         elif rlpath[0] == "/":
-            git_path = repo_url + "#" + rlpath[1:]
+            return f"{repo_url}#{rlpath[1:]}"
         else:
-            git_path = repo_url + "#" + rlpath
-        return git_path
+            return f"{repo_url}#{rlpath}"
     except (InvalidGitRepositoryError, GitCommandNotFound, ValueError, NoSuchPathError):
         return uri

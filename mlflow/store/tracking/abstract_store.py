@@ -73,10 +73,14 @@ class AbstractStore:
 
         :return: A single :py:class:`mlflow.entities.Experiment` object if it exists.
         """
-        for experiment in self.list_experiments(ViewType.ALL):
-            if experiment.name == experiment_name:
-                return experiment
-        return None
+        return next(
+            (
+                experiment
+                for experiment in self.list_experiments(ViewType.ALL)
+                if experiment.name == experiment_name
+            ),
+            None,
+        )
 
     @abstractmethod
     def delete_experiment(self, experiment_id):

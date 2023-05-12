@@ -130,7 +130,7 @@ def save_model(
 
     path = os.path.abspath(path)
     if os.path.exists(path):
-        raise MlflowException("Path '{}' already exists".format(path))
+        raise MlflowException(f"Path '{path}' already exists")
     model_data_subpath = "model.lgb"
     model_data_path = os.path.join(path, model_data_subpath)
     os.makedirs(path)
@@ -303,7 +303,7 @@ def autolog(
     exclusive=False,
     disable_for_unsupported_versions=False,
     silent=False,
-):  # pylint: disable=unused-argument
+):    # pylint: disable=unused-argument
     """
     Enables (or disables) and configures autologging from LightGBM to MLflow. Logs the following:
 
@@ -353,7 +353,7 @@ def autolog(
     #   (there is no way to get the data back from a Dataset object once it is consumed by train)
     # We store it on the Dataset object so the train function is able to read it.
     def __init__(original, self, *args, **kwargs):
-        data = args[0] if len(args) > 0 else kwargs.get("data")
+        data = args[0] if args else kwargs.get("data")
 
         if data is not None:
             try:
@@ -382,7 +382,7 @@ def autolog(
             def callback(env):
                 res = {}
                 for data_name, eval_name, value, _ in env.evaluation_result_list:
-                    key = data_name + "-" + eval_name
+                    key = f"{data_name}-{eval_name}"
                     res[key] = value
                 metrics_logger.record_metrics(res, env.iteration)
                 eval_results.append(res)
@@ -428,7 +428,7 @@ def autolog(
 
         # logging booster params separately via mlflow.log_params to extract key/value pairs
         # and make it easier to compare them across runs.
-        booster_params = args[0] if len(args) > 0 else kwargs["params"]
+        booster_params = args[0] if args else kwargs["params"]
         autologging_client.log_params(run_id=mlflow.active_run().info.run_id, params=booster_params)
 
         unlogged_params = [
@@ -511,7 +511,7 @@ def autolog(
                     "will ignore the failure and continue. Exception: "
                 )
 
-            imp = {ft: imp for ft, imp in zip(features, importance.tolist())}
+            imp = dict(zip(features, importance.tolist()))
             tmpdir = tempfile.mkdtemp()
             try:
                 filepath = os.path.join(tmpdir, "feature_importance_{}.json".format(imp_type))

@@ -167,7 +167,7 @@ def test_pytorch_autolog_model_can_load_from_artifact(pytorch_model_with_callbac
     artifacts = client.list_artifacts(run_id)
     artifacts = map(lambda x: x.path, artifacts)
     assert "model" in artifacts
-    model = mlflow.pytorch.load_model("runs:/" + run_id + "/model")
+    model = mlflow.pytorch.load_model(f"runs:/{run_id}/model")
     result = model(torch.Tensor([1.5, 2, 2.5, 3.5]).unsqueeze(0))
     assert result is not None
 

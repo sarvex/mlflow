@@ -15,7 +15,7 @@ def test_project_get_entry_point():
     assert entry_point.name == "greeter"
     assert entry_point.command == "python greeter.py {greeting} {name}"
     # Validate parameters
-    assert set(entry_point.parameters.keys()) == set(["name", "greeting"])
+    assert set(entry_point.parameters.keys()) == {"name", "greeting"}
     name_param = entry_point.parameters["name"]
     assert name_param.type == "string"
     assert name_param.default is None
@@ -33,7 +33,7 @@ def test_project_get_unspecified_entry_point():
     assert entry_point.parameters == {}
     entry_point = project.get_entry_point("my_script.sh")
     assert entry_point.name == "my_script.sh"
-    assert entry_point.command == "%s my_script.sh" % os.environ.get("SHELL", "bash")
+    assert entry_point.command == f'{os.environ.get("SHELL", "bash")} my_script.sh'
     assert entry_point.parameters == {}
     with pytest.raises(ExecutionException):
         project.get_entry_point("my_program.scala")

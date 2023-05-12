@@ -93,14 +93,23 @@ def _build_waitress_command(waitress_opts, host, port):
     return (
         ["waitress-serve"]
         + opts
-        + ["--host=%s" % host, "--port=%s" % port, "--ident=mlflow", "mlflow.server:app"]
+        + [
+            f"--host={host}",
+            f"--port={port}",
+            "--ident=mlflow",
+            "mlflow.server:app",
+        ]
     )
 
 
 def _build_gunicorn_command(gunicorn_opts, host, port, workers):
-    bind_address = "%s:%s" % (host, port)
+    bind_address = f"{host}:{port}"
     opts = shlex.split(gunicorn_opts) if gunicorn_opts else []
-    return ["gunicorn"] + opts + ["-b", bind_address, "-w", "%s" % workers, "mlflow.server:app"]
+    return (
+        ["gunicorn"]
+        + opts
+        + ["-b", bind_address, "-w", f"{workers}", "mlflow.server:app"]
+    )
 
 
 def _run_server(

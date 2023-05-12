@@ -53,12 +53,10 @@ def _resolve_experiment_id(experiment_name=None, experiment_id=None):
 
     if experiment_name:
         client = tracking.MlflowClient()
-        exp = client.get_experiment_by_name(experiment_name)
-        if exp:
+        if exp := client.get_experiment_by_name(experiment_name):
             return exp.experiment_id
-        else:
-            print("INFO: '{}' does not exist. Creating a new experiment".format(experiment_name))
-            return client.create_experiment(experiment_name)
+        print(f"INFO: '{experiment_name}' does not exist. Creating a new experiment")
+        return client.create_experiment(experiment_name)
 
     return _get_experiment_id()
 
@@ -87,8 +85,7 @@ def _run(
     backend_config[PROJECT_STORAGE_DIR] = storage_dir
     # TODO: remove this check once kubernetes execution has been refactored
     if backend_name not in {"databricks", "kubernetes"}:
-        backend = loader.load_backend(backend_name)
-        if backend:
+        if backend := loader.load_backend(backend_name):
             submitted_run = backend.run(
                 uri,
                 entry_point,
@@ -321,7 +318,7 @@ def _wait_for(submitted_run_obj):
             _maybe_set_run_terminated(active_run, "FINISHED")
         else:
             _maybe_set_run_terminated(active_run, "FAILED")
-            raise ExecutionException("Run (ID '%s') failed" % run_id)
+            raise ExecutionException(f"Run (ID '{run_id}') failed")
     except KeyboardInterrupt:
         _logger.error("=== Run (ID '%s') interrupted, cancelling run ===", run_id)
         submitted_run_obj.cancel()
@@ -362,15 +359,14 @@ def _parse_kubernetes_config(backend_config):
             "'kube-job-template-path' attribute must be specified in " "backend_config."
         )
     kube_job_template = backend_config["kube-job-template-path"]
-    if os.path.exists(kube_job_template):
-        with open(kube_job_template, "r") as job_template:
-            yaml_obj = yaml.safe_load(job_template.read())
-        kube_job_template = yaml_obj
-        kube_config["kube-job-template"] = kube_job_template
-    else:
+    if not os.path.exists(kube_job_template):
         raise ExecutionException(
-            "Could not find 'kube-job-template-path': {}".format(kube_job_template)
+            f"Could not find 'kube-job-template-path': {kube_job_template}"
         )
+    with open(kube_job_template, "r") as job_template:
+        yaml_obj = yaml.safe_load(job_template.read())
+    kube_job_template = yaml_obj
+    kube_config["kube-job-template"] = kube_job_template
     if "kube-context" not in backend_config.keys():
         _logger.debug(
             "Could not find kube-context in backend_config."

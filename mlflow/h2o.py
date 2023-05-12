@@ -97,7 +97,7 @@ def save_model(
 
     path = os.path.abspath(path)
     if os.path.exists(path):
-        raise Exception("Path '{}' already exists".format(path))
+        raise Exception(f"Path '{path}' already exists")
     model_data_subpath = "model.h2o"
     model_data_path = os.path.join(path, model_data_subpath)
     os.makedirs(model_data_path)
@@ -233,15 +233,12 @@ def _load_model(path, init=False):
 
     model_path = os.path.join(path, params["model_file"])
     if hasattr(h2o, "upload_model"):
-        model = h2o.upload_model(model_path)
-    else:
-        warnings.warn(
-            "If your cluster is remote, H2O may not load the model correctly. "
-            "Please upgrade H2O version to a newer version"
-        )
-        model = h2o.load_model(model_path)
-
-    return model
+        return h2o.upload_model(model_path)
+    warnings.warn(
+        "If your cluster is remote, H2O may not load the model correctly. "
+        "Please upgrade H2O version to a newer version"
+    )
+    return h2o.load_model(model_path)
 
 
 class _H2OModelWrapper:

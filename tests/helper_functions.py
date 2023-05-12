@@ -94,7 +94,9 @@ def pyfunc_build_image(model_uri, extra_args=None):
     if extra_args:
         cmd += extra_args
     p = subprocess.Popen(cmd,)
-    assert p.wait() == 0, "Failed to build docker image to serve model from %s" % model_uri
+    assert (
+        p.wait() == 0
+    ), f"Failed to build docker image to serve model from {model_uri}"
     return name
 
 
@@ -105,7 +107,7 @@ def pyfunc_serve_from_docker_image(image_name, host_port, extra_args=None):
     """
     env = dict(os.environ)
     env.update(LC_ALL="en_US.UTF-8", LANG="en_US.UTF-8")
-    scoring_cmd = ["docker", "run", "-p", "%s:8080" % host_port, image_name]
+    scoring_cmd = ["docker", "run", "-p", f"{host_port}:8080", image_name]
     if extra_args is not None:
         scoring_cmd += extra_args
     return _start_scoring_proc(cmd=scoring_cmd, env=env)
@@ -124,9 +126,9 @@ def pyfunc_serve_from_docker_image_with_env_override(
         "docker",
         "run",
         "-e",
-        "GUNICORN_CMD_ARGS=%s" % gunicorn_opts,
+        f"GUNICORN_CMD_ARGS={gunicorn_opts}",
         "-p",
-        "%s:8080" % host_port,
+        f"{host_port}:8080",
         image_name,
     ]
     if extra_args is not None:
@@ -249,23 +251,22 @@ class RestEndpoint:
         if type(data) == pd.DataFrame:
             if content_type == pyfunc_scoring_server.CONTENT_TYPE_JSON_RECORDS_ORIENTED:
                 data = data.to_json(orient="records")
-            elif (
-                content_type == pyfunc_scoring_server.CONTENT_TYPE_JSON
-                or content_type == pyfunc_scoring_server.CONTENT_TYPE_JSON_SPLIT_ORIENTED
-            ):
+            elif content_type in [
+                pyfunc_scoring_server.CONTENT_TYPE_JSON,
+                pyfunc_scoring_server.CONTENT_TYPE_JSON_SPLIT_ORIENTED,
+            ]:
                 data = data.to_json(orient="split")
             elif content_type == pyfunc_scoring_server.CONTENT_TYPE_CSV:
                 data = data.to_csv(index=False)
             else:
                 raise Exception(
-                    "Unexpected content type for Pandas dataframe input %s" % content_type
+                    f"Unexpected content type for Pandas dataframe input {content_type}"
                 )
-        response = requests.post(
+        return requests.post(
             url="http://localhost:%d/invocations" % self._port,
             data=data,
             headers={"Content-Type": content_type},
         )
-        return response
 
 
 def _evaluate_scoring_proc(proc, port, data, content_type, activity_polling_timeout_seconds=250):
@@ -380,7 +381,7 @@ def _is_available_on_pypi(package, version=None, module=None):
                    if `package` is 'scikit-learn', `module` should be 'sklearn'. If None, defaults
                    to `package`.
     """
-    resp = requests.get("https://pypi.python.org/pypi/{}/json".format(package))
+    resp = requests.get(f"https://pypi.python.org/pypi/{package}/json")
     if not resp.ok:
         return False
 

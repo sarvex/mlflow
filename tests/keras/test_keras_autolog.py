@@ -140,7 +140,7 @@ def test_keras_autolog_model_can_load_from_artifact(keras_random_data_run, rando
     artifacts = client.list_artifacts(run_id)
     artifacts = map(lambda x: x.path, artifacts)
     assert "model" in artifacts
-    model = mlflow.keras.load_model("runs:/" + run_id + "/model")
+    model = mlflow.keras.load_model(f"runs:/{run_id}/model")
     model.predict(random_train_data)
 
 

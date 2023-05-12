@@ -75,7 +75,7 @@ def _log_model_with_signature_and_example(tmp_path, sig, input_example):
         Model.log("some/path", TestFlavor, signature=sig, input_example=input_example)
 
     local_path = _download_artifact_from_uri(
-        "runs:/{}/some/path".format(run.info.run_id), output_path=tmp_path.path("")
+        f"runs:/{run.info.run_id}/some/path", output_path=tmp_path.path("")
     )
 
     return local_path, run

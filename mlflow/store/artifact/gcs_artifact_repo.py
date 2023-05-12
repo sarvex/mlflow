@@ -31,7 +31,7 @@ class GCSArtifactRepository(ArtifactRepository):
         """Parse an GCS URI, returning (bucket, path)"""
         parsed = urllib.parse.urlparse(uri)
         if parsed.scheme != "gs":
-            raise Exception("Not a GCS URI: %s" % uri)
+            raise Exception(f"Not a GCS URI: {uri}")
         path = parsed.path
         if path.startswith("/"):
             path = path[1:]
@@ -78,7 +78,7 @@ class GCSArtifactRepository(ArtifactRepository):
         dest_path = artifact_path
         if path:
             dest_path = posixpath.join(dest_path, path)
-        prefix = dest_path if dest_path.endswith("/") else dest_path + "/"
+        prefix = dest_path if dest_path.endswith("/") else f"{dest_path}/"
 
         bkt = self._get_bucket(bucket)
 

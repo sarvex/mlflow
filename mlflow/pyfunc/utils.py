@@ -20,5 +20,5 @@ def _get_code_dirs(src_code_path, dst_code_path=None):
     return [
         (os.path.join(dst_code_path, x))
         for x in os.listdir(src_code_path)
-        if os.path.isdir(x) and not x == "__pycache__"
+        if os.path.isdir(x) and x != "__pycache__"
     ]

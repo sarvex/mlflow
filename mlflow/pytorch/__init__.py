@@ -459,12 +459,13 @@ def save_model(
 
     if not isinstance(pytorch_model, torch.nn.Module):
         raise TypeError("Argument 'pytorch_model' should be a torch.nn.Module")
-    if code_paths is not None:
-        if not isinstance(code_paths, list):
-            raise TypeError("Argument code_paths should be a list, not {}".format(type(code_paths)))
+    if code_paths is not None and not isinstance(code_paths, list):
+        raise TypeError(
+            f"Argument code_paths should be a list, not {type(code_paths)}"
+        )
     path = os.path.abspath(path)
     if os.path.exists(path):
-        raise RuntimeError("Path '{}' already exists".format(path))
+        raise RuntimeError(f"Path '{path}' already exists")
 
     if mlflow_model is None:
         mlflow_model = Model()
@@ -624,13 +625,12 @@ def _load_model(path, **kwargs):
 
     if Version(torch.__version__) >= Version("1.5.0"):
         return torch.load(model_path, **kwargs)
-    else:
-        try:
-            # load the model as an eager model.
-            return torch.load(model_path, **kwargs)
-        except Exception:
-            # If fails, assume the model as a scripted model
-            return torch.jit.load(model_path)
+    try:
+        # load the model as an eager model.
+        return torch.load(model_path, **kwargs)
+    except Exception:
+        # If fails, assume the model as a scripted model
+        return torch.jit.load(model_path)
 
 
 def load_model(model_uri, dst_path=None, **kwargs):
@@ -757,8 +757,7 @@ class _PyTorchWrapper(object):
             preds = self.pytorch_model(input_tensor)
             if not isinstance(preds, torch.Tensor):
                 raise TypeError(
-                    "Expected PyTorch model to output a single output tensor, "
-                    "but got output of type '{}'".format(type(preds))
+                    f"Expected PyTorch model to output a single output tensor, but got output of type '{type(preds)}'"
                 )
             if isinstance(data, pd.DataFrame):
                 predicted = pd.DataFrame(preds.numpy())
@@ -822,9 +821,7 @@ def save_state_dict(state_dict, path, **kwargs):
     # successfully completes, leaving the user unaware of the mistake.
     if not isinstance(state_dict, dict):
         raise TypeError(
-            "Invalid object type for `state_dict`: {}. Must be an instance of `dict`".format(
-                type(state_dict)
-            )
+            f"Invalid object type for `state_dict`: {type(state_dict)}. Must be an instance of `dict`"
         )
 
     os.makedirs(path, exist_ok=True)

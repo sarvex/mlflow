@@ -156,12 +156,7 @@ def _save_model_with_class_artifacts_params(
     custom_model_config_kwargs = {
         CONFIG_KEY_CLOUDPICKLE_VERSION: cloudpickle.__version__,
     }
-    if isinstance(python_model, PythonModel):
-        saved_python_model_subpath = "python_model.pkl"
-        with open(os.path.join(path, saved_python_model_subpath), "wb") as out:
-            cloudpickle.dump(python_model, out)
-        custom_model_config_kwargs[CONFIG_KEY_PYTHON_MODEL] = saved_python_model_subpath
-    else:
+    if not isinstance(python_model, PythonModel):
         raise MlflowException(
             message=(
                 "`python_model` must be a subclass of `PythonModel`. Instead, found an"
@@ -170,6 +165,10 @@ def _save_model_with_class_artifacts_params(
             error_code=INVALID_PARAMETER_VALUE,
         )
 
+    saved_python_model_subpath = "python_model.pkl"
+    with open(os.path.join(path, saved_python_model_subpath), "wb") as out:
+        cloudpickle.dump(python_model, out)
+    custom_model_config_kwargs[CONFIG_KEY_PYTHON_MODEL] = saved_python_model_subpath
     if artifacts:
         saved_artifacts_config = {}
         with TempDir() as tmp_artifacts_dir:
@@ -264,14 +263,14 @@ def _load_pyfunc(model_path):
     with open(os.path.join(model_path, python_model_subpath), "rb") as f:
         python_model = cloudpickle.load(f)
 
-    artifacts = {}
-    for saved_artifact_name, saved_artifact_info in pyfunc_config.get(
-        CONFIG_KEY_ARTIFACTS, {}
-    ).items():
-        artifacts[saved_artifact_name] = os.path.join(
+    artifacts = {
+        saved_artifact_name: os.path.join(
             model_path, saved_artifact_info[CONFIG_KEY_ARTIFACT_RELATIVE_PATH]
         )
-
+        for saved_artifact_name, saved_artifact_info in pyfunc_config.get(
+            CONFIG_KEY_ARTIFACTS, {}
+        ).items()
+    }
     context = PythonModelContext(artifacts=artifacts)
     python_model.load_context(context=context)
     return _PythonModelPyfuncWrapper(python_model=python_model, context=context)

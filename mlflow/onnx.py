@@ -119,7 +119,8 @@ def save_model(
     path = os.path.abspath(path)
     if os.path.exists(path):
         raise MlflowException(
-            message="Path '{}' already exists".format(path), error_code=RESOURCE_ALREADY_EXISTS
+            message=f"Path '{path}' already exists",
+            error_code=RESOURCE_ALREADY_EXISTS,
         )
     os.makedirs(path)
     if mlflow_model is None:

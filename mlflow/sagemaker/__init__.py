@@ -142,12 +142,9 @@ def push_image_to_ecr(image=DEFAULT_IMAGE_NAME):
         "{account}.dkr.ecr.{region}.amazonaws.com".format(account=account, region=region)
     )
 
-    os_command_separator = ";\n"
-    if platform.system() == "Windows":
-        os_command_separator = " && "
-
+    os_command_separator = " && " if platform.system() == "Windows" else ";\n"
     docker_tag_cmd = "docker tag {image} {fullname}".format(image=image, fullname=fullname)
-    docker_push_cmd = "docker push {}".format(fullname)
+    docker_push_cmd = f"docker push {fullname}"
 
     cmd = os_command_separator.join([docker_login_cmd, docker_tag_cmd, docker_push_cmd])
 
@@ -306,9 +303,7 @@ def deploy(
     model_config_path = os.path.join(model_path, MLMODEL_FILE_NAME)
     if not os.path.exists(model_config_path):
         raise MlflowException(
-            message=(
-                "Failed to find {} configuration within the specified model's" " root directory."
-            ).format(MLMODEL_FILE_NAME),
+            message=f"Failed to find {MLMODEL_FILE_NAME} configuration within the specified model's root directory.",
             error_code=INVALID_PARAMETER_VALUE,
         )
     model_config = Model.load(model_config_path)
@@ -634,9 +629,7 @@ def deploy_transform_job(
     model_config_path = os.path.join(model_path, MLMODEL_FILE_NAME)
     if not os.path.exists(model_config_path):
         raise MlflowException(
-            message=(
-                "Failed to find {} configuration within the specified model's" " root directory."
-            ).format(MLMODEL_FILE_NAME),
+            message=f"Failed to find {MLMODEL_FILE_NAME} configuration within the specified model's root directory.",
             error_code=INVALID_PARAMETER_VALUE,
         )
     model_config = Model.load(model_config_path)
@@ -893,9 +886,7 @@ def push_model_to_sagemaker(
     model_config_path = os.path.join(model_path, MLMODEL_FILE_NAME)
     if not os.path.exists(model_config_path):
         raise MlflowException(
-            message=(
-                "Failed to find {} configuration within the specified model's" " root directory."
-            ).format(MLMODEL_FILE_NAME),
+            message=f"Failed to find {MLMODEL_FILE_NAME} configuration within the specified model's root directory.",
             error_code=INVALID_PARAMETER_VALUE,
         )
     model_config = Model.load(model_config_path)
@@ -1006,12 +997,10 @@ def run_local(model_uri, port=5000, image=DEFAULT_IMAGE_NAME, flavor=None):
 def _get_default_image_url(region_name):
     import boto3
 
-    env_img = os.environ.get(IMAGE_NAME_ENV_VAR)
-    if env_img:
+    if env_img := os.environ.get(IMAGE_NAME_ENV_VAR):
         return env_img
 
-    env_img = os.environ.get(DEPRECATED_IMAGE_NAME_ENV_VAR)
-    if env_img:
+    if env_img := os.environ.get(DEPRECATED_IMAGE_NAME_ENV_VAR):
         _logger.warning(
             "Environment variable '%s' is deprecated, please use '%s' instead",
             DEPRECATED_IMAGE_NAME_ENV_VAR,
@@ -1032,8 +1021,7 @@ def _get_account_id():
     sess = boto3.Session()
     sts_client = sess.client("sts")
     identity_info = sts_client.get_caller_identity()
-    account_id = identity_info["Account"]
-    return account_id
+    return identity_info["Account"]
 
 
 def _get_assumed_role_arn():
@@ -1119,15 +1107,14 @@ def _upload_s3(local_model_path, bucket, prefix, region_name, s3_client):
                 Bucket=bucket, Key=key, Tagging={"TagSet": [{"Key": "SageMaker", "Value": "true"}]}
             )
             _logger.info("tag response: %s", response)
-            return "s3://{}/{}".format(bucket, key)
+            return f"s3://{bucket}/{key}"
 
 
 def _get_deployment_config(flavor_name):
     """
     :return: The deployment configuration as a dictionary
     """
-    deployment_config = {DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME: flavor_name}
-    return deployment_config
+    return {DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME: flavor_name}
 
 
 def _get_sagemaker_model_name(endpoint_name):
@@ -1551,8 +1538,7 @@ def _create_sagemaker_model(
     if vpc_config is not None:
         create_model_args["VpcConfig"] = vpc_config
 
-    model_response = sage_client.create_model(**create_model_args)
-    return model_response
+    return sage_client.create_model(**create_model_args)
 
 
 def _delete_sagemaker_model(model_name, sage_client, s3_client):
@@ -1653,7 +1639,7 @@ def _does_model_exist(model_name, sage_client):
         if "Could not find model" in error.response["Error"]["Message"]:
             return False
     else:
-        return True if response else False
+        return bool(response)
 
 
 class _SageMakerOperation:

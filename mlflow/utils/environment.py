@@ -51,31 +51,29 @@ def _mlflow_conda_env(
     )
 
     env = yaml.safe_load(_conda_header)
-    env["dependencies"] = ["python={}".format(PYTHON_VERSION)]
+    env["dependencies"] = [f"python={PYTHON_VERSION}"]
     if conda_deps is not None:
         env["dependencies"] += conda_deps
     env["dependencies"].append({"pip": pip_deps})
     if additional_conda_channels is not None:
         env["channels"] += additional_conda_channels
 
-    if path is not None:
-        with open(path, "w") as out:
-            yaml.safe_dump(env, stream=out, default_flow_style=False)
-        return None
-    else:
+    if path is None:
         return env
+    with open(path, "w") as out:
+        yaml.safe_dump(env, stream=out, default_flow_style=False)
+    return None
 
 
 def _mlflow_additional_pip_env(
     pip_deps, path=None,
 ):
     requirements = "\n".join(pip_deps)
-    if path is not None:
-        with open(path, "w") as out:
-            out.write(requirements)
-        return None
-    else:
+    if path is None:
         return requirements
+    with open(path, "w") as out:
+        out.write(requirements)
+    return None
 
 
 def _is_pip_deps(dep):
@@ -279,8 +277,7 @@ def _process_conda_env(conda_env):
             conda_env = yaml.safe_load(f)
     elif not isinstance(conda_env, dict):
         raise TypeError(
-            "Expected a string path to a conda env yaml file or a `dict` representing a conda env, "
-            "but got `{}`".format(type(conda_env).__name__)
+            f"Expected a string path to a conda env yaml file or a `dict` representing a conda env, but got `{type(conda_env).__name__}`"
         )
 
     # User-specified `conda_env` may contain requirements/constraints file references

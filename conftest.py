@@ -60,7 +60,7 @@ def pytest_runtest_setup(item):
     marked_as_large = "large" in markers
     large_option = item.config.getoption("--large")
     large_only_option = item.config.getoption("--large-only")
-    if marked_as_large and not (large_option or large_only_option):
+    if marked_as_large and not large_option and not large_only_option:
         pytest.skip("use `--large` or `--large-only` to run this test")
     if not marked_as_large and large_only_option:
         pytest.skip("remove `--large-only` to run this test")

@@ -21,7 +21,7 @@ def etl_data(ratings_csv, max_row_limit):
         tmpdir = tempfile.mkdtemp()
         ratings_parquet_dir = os.path.join(tmpdir, "ratings-parquet")
         spark = pyspark.sql.SparkSession.builder.getOrCreate()
-        print("Converting ratings CSV %s to Parquet %s" % (ratings_csv, ratings_parquet_dir))
+        print(f"Converting ratings CSV {ratings_csv} to Parquet {ratings_parquet_dir}")
         ratings_df = (
             spark.read.option("header", "true")
             .option("inferSchema", "true")
@@ -32,7 +32,7 @@ def etl_data(ratings_csv, max_row_limit):
         if max_row_limit != -1:
             ratings_df = ratings_df.limit(max_row_limit)
         ratings_df.write.parquet(ratings_parquet_dir)
-        print("Uploading Parquet ratings: %s" % ratings_parquet_dir)
+        print(f"Uploading Parquet ratings: {ratings_parquet_dir}")
         mlflow.log_artifacts(ratings_parquet_dir, "ratings-parquet-dir")
 
 

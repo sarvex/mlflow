@@ -63,10 +63,7 @@ def add_table_info_to_context_provider(path, version, data_format):
 
 def _get_spark_major_version(sc):
     spark_version_parts = sc.version.split(".")
-    spark_major_version = None
-    if len(spark_version_parts) > 0:
-        spark_major_version = int(spark_version_parts[0])
-    return spark_major_version
+    return int(spark_version_parts[0]) if len(spark_version_parts) > 0 else None
 
 
 def _get_jvm_event_publisher():
@@ -77,7 +74,7 @@ def _get_jvm_event_publisher():
     - register(subscriber) for registering subscribers to receive datasource events
     """
     jvm = SparkContext._gateway.jvm
-    qualified_classname = "{}.{}".format(_JAVA_PACKAGE, "MlflowAutologEventPublisher")
+    qualified_classname = f"{_JAVA_PACKAGE}.MlflowAutologEventPublisher"
     return getattr(jvm, qualified_classname)
 
 
@@ -164,8 +161,7 @@ def _get_repl_id():
     local properties, and expect that the PythonSubscriber for the current Python process only
     receives events for datasource reads triggered by the current process.
     """
-    repl_id = get_databricks_repl_id()
-    if repl_id:
+    if repl_id := get_databricks_repl_id():
         return repl_id
     main_file = sys.argv[0] if len(sys.argv) > 0 else "<console>"
     return "PythonSubscriber[{filename}][{id}]".format(filename=main_file, id=uuid.uuid4().hex)
@@ -189,7 +185,7 @@ class PythonSubscriber(object, metaclass=ExceptionSafeClass):
 
     def toString(self):
         # For debugging
-        return "PythonSubscriber<replId=%s>" % self.replId()
+        return f"PythonSubscriber<replId={self.replId()}>"
 
     def ping(self):
         return None
@@ -211,12 +207,7 @@ class PythonSubscriber(object, metaclass=ExceptionSafeClass):
         """
         if autologging_is_disabled(FLAVOR_NAME):
             return
-        # If there's an active run, simply set the tag on it
-        # Note that there's a TOCTOU race condition here - active_run() here can actually throw
-        # if the main thread happens to end the run & pop from the active run stack after we check
-        # the stack size but before we peek
-        active_run = mlflow.active_run()
-        if active_run:
+        if active_run := mlflow.active_run():
             _set_run_tag_async(active_run.info.run_id, path, version, data_format)
         else:
             add_table_info_to_context_provider(path, version, data_format)
@@ -249,12 +240,17 @@ class SparkAutologgingContext(RunContextProvider):
                 if info not in seen:
                     unique_infos.append(info)
                     seen.add(info)
-            if len(unique_infos) > 0:
-                tags = {
+            return (
+                {
                     _SPARK_TABLE_INFO_TAG_NAME: _generate_datasource_tag_value(
-                        "\n".join([_get_table_info_string(*info) for info in unique_infos])
+                        "\n".join(
+                            [
+                                _get_table_info_string(*info)
+                                for info in unique_infos
+                            ]
+                        )
                     )
                 }
-            else:
-                tags = {}
-            return tags
+                if unique_infos
+                else {}
+            )

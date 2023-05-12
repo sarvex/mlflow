@@ -93,15 +93,14 @@ def infer_and_parse_json_input(json_input, schema: Schema = None):
     if isinstance(decoded_input, list):
         return parse_json_input(json_input=json_input, orient="records", schema=schema)
     elif isinstance(decoded_input, dict):
-        if "instances" in decoded_input or "inputs" in decoded_input:
-            try:
-                return parse_tf_serving_input(decoded_input, schema=schema)
-            except MlflowException as ex:
-                _handle_serving_error(
-                    error_message=(ex.message), error_code=MALFORMED_REQUEST,
-                )
-        else:
+        if "instances" not in decoded_input and "inputs" not in decoded_input:
             return parse_json_input(json_input=json_input, orient="split", schema=schema)
+        try:
+            return parse_tf_serving_input(decoded_input, schema=schema)
+        except MlflowException as ex:
+            _handle_serving_error(
+                error_message=(ex.message), error_code=MALFORMED_REQUEST,
+            )
     else:
         _handle_serving_error(
             error_message=(
@@ -181,8 +180,9 @@ def parse_split_oriented_json_input_to_numpy(json_input):
 
 def predictions_to_json(raw_predictions, output):
     predictions = _get_jsonable_obj(raw_predictions, pandas_orient="records")
-    wrapper_attr_name = os.environ.get(PREDICTIONS_WRAPPER_ATTR_NAME_ENV_KEY, None)
-    if wrapper_attr_name:
+    if wrapper_attr_name := os.environ.get(
+        PREDICTIONS_WRAPPER_ATTR_NAME_ENV_KEY, None
+    ):
         predictions = {wrapper_attr_name: predictions}
     json.dump(predictions, output, cls=NumpyEncoder)
 
@@ -333,7 +333,7 @@ def _predict(model_uri, input_path, output_path, content_type, json_format):
     elif content_type == "csv":
         df = parse_csv_input(input_path)
     else:
-        raise Exception("Unknown content type '{}'".format(content_type))
+        raise Exception(f"Unknown content type '{content_type}'")
 
     if output_path is None:
         predictions_to_json(pyfunc_model.predict(df), sys.stdout)

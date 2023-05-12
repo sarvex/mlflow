@@ -73,7 +73,7 @@ def _get_git_repo_url(work_dir):
     try:
         repo = Repo(work_dir, search_parent_directories=True)
         remote_urls = [remote.url for remote in repo.remotes]
-        if len(remote_urls) == 0:
+        if not remote_urls:
             return None
     except GitCommandError:
         return None
@@ -83,9 +83,7 @@ def _get_git_repo_url(work_dir):
 
 
 def _expand_uri(uri):
-    if _is_local_uri(uri):
-        return os.path.abspath(uri)
-    return uri
+    return os.path.abspath(uri) if _is_local_uri(uri) else uri
 
 
 def _is_file_uri(uri):
@@ -114,7 +112,7 @@ def _is_valid_branch_name(work_dir, version):
 
         repo = Repo(work_dir, search_parent_directories=True)
         try:
-            return repo.git.rev_parse("--verify", "refs/heads/%s" % version) != ""
+            return repo.git.rev_parse("--verify", f"refs/heads/{version}") != ""
         except GitCommandError:
             return False
     return False
@@ -155,11 +153,15 @@ def _fetch_project(uri, version=None):
         if use_temp_dst_dir:
             dir_util.copy_tree(src=parsed_uri, dst=dst_dir)
     else:
-        assert _GIT_URI_REGEX.match(parsed_uri), "Non-local URI %s should be a Git URI" % parsed_uri
+        assert _GIT_URI_REGEX.match(
+            parsed_uri
+        ), f"Non-local URI {parsed_uri} should be a Git URI"
         _fetch_git_repo(parsed_uri, version, dst_dir)
     res = os.path.abspath(os.path.join(dst_dir, subdirectory))
     if not os.path.exists(res):
-        raise ExecutionException("Could not find subdirectory %s of %s" % (subdirectory, dst_dir))
+        raise ExecutionException(
+            f"Could not find subdirectory {subdirectory} of {dst_dir}"
+        )
     return res
 
 
@@ -211,7 +213,7 @@ def _fetch_zip_repo(uri):
     try:
         response.raise_for_status()
     except requests.HTTPError as error:
-        raise ExecutionException("Unable to retrieve ZIP file. Reason: %s" % str(error))
+        raise ExecutionException(f"Unable to retrieve ZIP file. Reason: {str(error)}")
     return BytesIO(response.content)
 
 
@@ -233,8 +235,7 @@ def _create_run(uri, experiment_id, work_dir, version, entry_point, parameters):
     else:
         source_name = _expand_uri(uri)
     source_version = _get_git_commit(work_dir)
-    existing_run = fluent.active_run()
-    if existing_run:
+    if existing_run := fluent.active_run():
         parent_run_id = existing_run.info.run_id
     else:
         parent_run_id = None
@@ -288,11 +289,11 @@ def get_entry_point_command(project, entry_point, parameters, storage_dir):
         " type 'path' ===",
         storage_dir_for_run,
     )
-    commands = []
-    commands.append(
-        project.get_entry_point(entry_point).compute_command(parameters, storage_dir_for_run)
-    )
-    return commands
+    return [
+        project.get_entry_point(entry_point).compute_command(
+            parameters, storage_dir_for_run
+        )
+    ]
 
 
 def get_run_env_vars(run_id, experiment_id):
@@ -315,9 +316,10 @@ def get_databricks_env_vars(tracking_uri):
     # We set these via environment variables so that only the current profile is exposed, rather
     # than all profiles in ~/.databrickscfg; maybe better would be to mount the necessary
     # part of ~/.databrickscfg into the container
-    env_vars = {}
-    env_vars[tracking._TRACKING_URI_ENV_VAR] = "databricks"
-    env_vars["DATABRICKS_HOST"] = config.host
+    env_vars = {
+        tracking._TRACKING_URI_ENV_VAR: "databricks",
+        "DATABRICKS_HOST": config.host,
+    }
     if config.username:
         env_vars["DATABRICKS_USERNAME"] = config.username
     if config.password:

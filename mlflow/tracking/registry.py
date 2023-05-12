@@ -11,13 +11,7 @@ class UnsupportedModelRegistryStoreURIException(MlflowException):
     """Exception thrown when building a model registry store with an unsupported URI"""
 
     def __init__(self, unsupported_uri, supported_uri_schemes):
-        message = (
-            " Model registry functionality is unavailable; got unsupported URI '{}' for"
-            " model registry data storage. Supported URI schemes are: {}."
-            " See https://www.mlflow.org/docs/latest/tracking.html#storage for"
-            " how to run an MLflow server against one of the supported backend storage"
-            " locations."
-        ).format(unsupported_uri, supported_uri_schemes)
+        message = f" Model registry functionality is unavailable; got unsupported URI '{unsupported_uri}' for model registry data storage. Supported URI schemes are: {supported_uri_schemes}. See https://www.mlflow.org/docs/latest/tracking.html#storage for how to run an MLflow server against one of the supported backend storage locations."
         super().__init__(message, error_code=INVALID_PARAMETER_VALUE)
         self.supported_uri_schemes = supported_uri_schemes
 
@@ -54,9 +48,7 @@ class StoreRegistry:
                 self.register(entrypoint.name, entrypoint.load())
             except (AttributeError, ImportError) as exc:
                 warnings.warn(
-                    'Failure attempting to register store for scheme "{}": {}'.format(
-                        entrypoint.name, str(exc)
-                    ),
+                    f'Failure attempting to register store for scheme "{entrypoint.name}": {str(exc)}',
                     stacklevel=2,
                 )
 

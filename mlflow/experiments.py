@@ -44,7 +44,7 @@ def create(experiment_name, artifact_location):
     """
     store = _get_store()
     exp_id = store.create_experiment(experiment_name, artifact_location)
-    print("Created experiment '%s' with id %s" % (experiment_name, exp_id))
+    print(f"Created experiment '{experiment_name}' with id {exp_id}")
 
 
 @commands.command("list")
@@ -94,7 +94,7 @@ def delete_experiment(experiment_id):
     """
     store = _get_store()
     store.delete_experiment(experiment_id)
-    print("Experiment with ID %s has been deleted." % str(experiment_id))
+    print(f"Experiment with ID {str(experiment_id)} has been deleted.")
 
 
 @commands.command("restore")
@@ -107,7 +107,7 @@ def restore_experiment(experiment_id):
     """
     store = _get_store()
     store.restore_experiment(experiment_id)
-    print("Experiment with id %s has been restored." % str(experiment_id))
+    print(f"Experiment with id {str(experiment_id)} has been restored.")
 
 
 @commands.command("rename")
@@ -120,7 +120,7 @@ def rename_experiment(experiment_id, new_name):
     """
     store = _get_store()
     store.rename_experiment(experiment_id, new_name)
-    print("Experiment with id %s has been renamed to '%s'." % (experiment_id, new_name))
+    print(f"Experiment with id {experiment_id} has been renamed to '{new_name}'.")
 
 
 @commands.command("csv")
@@ -135,8 +135,7 @@ def generate_csv_with_runs(experiment_id, filename):
     if filename:
         runs.to_csv(filename, index=False)
         print(
-            "Experiment with ID %s has been exported as a CSV to file: %s."
-            % (experiment_id, filename)
+            f"Experiment with ID {experiment_id} has been exported as a CSV to file: {filename}."
         )
     else:
         print(runs.to_csv(index=False))

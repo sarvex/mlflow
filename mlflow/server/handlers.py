@@ -198,9 +198,8 @@ def _get_request_message(request_message, flask_request=request):
             if (
                 field.label == descriptor.FieldDescriptor.LABEL_REPEATED
                 and field.name in request_dict
-            ):
-                if not isinstance(request_dict[field.name], list):
-                    request_dict[field.name] = [request_dict[field.name]]
+            ) and not isinstance(request_dict[field.name], list):
+                request_dict[field.name] = [request_dict[field.name]]
         parse_dict(request_dict, request_message)
         return request_message
 
@@ -311,7 +310,7 @@ def _get_experiment_by_name():
     store_exp = _get_tracking_store().get_experiment_by_name(request_message.experiment_name)
     if store_exp is None:
         raise MlflowException(
-            "Could not find experiment with name '%s'" % request_message.experiment_name,
+            f"Could not find experiment with name '{request_message.experiment_name}'",
             error_code=RESOURCE_DOES_NOT_EXIST,
         )
     experiment = store_exp.to_proto()
@@ -503,10 +502,7 @@ def _search_runs():
 def _list_artifacts():
     request_message = _get_request_message(ListArtifacts())
     response_message = ListArtifacts.Response()
-    if request_message.HasField("path"):
-        path = request_message.path
-    else:
-        path = None
+    path = request_message.path if request_message.HasField("path") else None
     run_id = request_message.run_id or request_message.run_uuid
     run = _get_tracking_store().get_run(run_id)
     artifact_entities = _get_artifact_repo(run).list_artifacts(path)
@@ -574,18 +570,18 @@ def _log_model():
         model = json.loads(request_message.model_json)
     except Exception:
         raise MlflowException(
-            "Malformed model info. \n {} \n is not a valid JSON.".format(
-                request_message.model_json
-            ),
+            f"Malformed model info. \n {request_message.model_json} \n is not a valid JSON.",
             error_code=INVALID_PARAMETER_VALUE,
         )
 
-    missing_fields = set(("artifact_path", "flavors", "utc_time_created", "run_id")) - set(
-        model.keys()
-    )
-    if missing_fields:
+    if missing_fields := {
+        "artifact_path",
+        "flavors",
+        "utc_time_created",
+        "run_id",
+    } - set(model.keys()):
         raise MlflowException(
-            "Model json is missing mandatory fields: {}".format(missing_fields),
+            f"Model json is missing mandatory fields: {missing_fields}",
             error_code=INVALID_PARAMETER_VALUE,
         )
     _get_tracking_store().record_logged_model(
@@ -894,8 +890,7 @@ def _list_artifacts_mlflow_artifacts():
 
 
 def _add_static_prefix(route):
-    prefix = os.environ.get(STATIC_PREFIX_ENV_VAR)
-    if prefix:
+    if prefix := os.environ.get(STATIC_PREFIX_ENV_VAR):
         return prefix + route
     return route
 
@@ -906,7 +901,10 @@ def _get_paths(base_path):
     We should register paths like /api/2.0/preview/mlflow/experiment and
     /ajax-api/2.0/preview/mlflow/experiment in the Flask router.
     """
-    return ["/api/2.0{}".format(base_path), _add_static_prefix("/ajax-api/2.0{}".format(base_path))]
+    return [
+        f"/api/2.0{base_path}",
+        _add_static_prefix(f"/ajax-api/2.0{base_path}"),
+    ]
 
 
 def get_handler(request_class):

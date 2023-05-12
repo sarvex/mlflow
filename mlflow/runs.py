@@ -46,7 +46,7 @@ def list_run(experiment_id, view):
     runs = store.search_runs([experiment_id], None, view_type)
     table = []
     for run in runs:
-        tags = {k: v for k, v in run.data.tags.items()}
+        tags = dict(run.data.tags.items())
         run_name = tags.get(MLFLOW_RUN_NAME, "")
         table.append([conv_longdate_to_str(run.info.start_time), run_name, run.info.run_id])
     print(tabulate(sorted(table, reverse=True), headers=["Date", "Name", "ID"]))
@@ -62,7 +62,7 @@ def delete_run(run_id):
     """
     store = _get_store()
     store.delete_run(run_id)
-    print("Run with ID %s has been deleted." % str(run_id))
+    print(f"Run with ID {str(run_id)} has been deleted.")
 
 
 @commands.command("restore")
@@ -74,7 +74,7 @@ def restore_run(run_id):
     """
     store = _get_store()
     store.restore_run(run_id)
-    print("Run with id %s has been restored." % str(run_id))
+    print(f"Run with id {str(run_id)} has been restored.")
 
 
 @commands.command("describe")

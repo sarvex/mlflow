@@ -99,7 +99,7 @@ def predict(
     https://www.mlflow.org/docs/latest/models.html#built-in-deployment-tools.
     """
     if content_type == "json" and json_format not in ("split", "records"):
-        raise Exception("Unsupported json format '{}'.".format(json_format))
+        raise Exception(f"Unsupported json format '{json_format}'.")
     return _get_flavor_backend(model_uri, no_conda=no_conda, install_mlflow=install_mlflow).predict(
         model_uri=model_uri,
         input_path=input_path,

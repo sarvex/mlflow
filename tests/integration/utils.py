@@ -18,7 +18,7 @@ def set_temp_env(temp_env):
 def update_temp_env(temp_env):
     old_env = os.environ
     new_env = os.environ.copy()
-    new_env.update(temp_env)
+    new_env |= temp_env
     try:
         os.environ = new_env
         yield

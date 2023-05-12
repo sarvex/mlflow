@@ -617,7 +617,7 @@ def test_safe_patch_makes_expected_event_logging_calls_for_successful_patch_invo
 
     def patch_impl(original, *args, **kwargs):
         nonlocal og_call_kwargs
-        kwargs.update({"extra_func": exception_safe_function(lambda k: "foo")})
+        kwargs["extra_func"] = exception_safe_function(lambda k: "foo")
         og_call_kwargs = kwargs
 
         nonlocal patch_session
@@ -630,9 +630,11 @@ def test_safe_patch_makes_expected_event_logging_calls_for_successful_patch_invo
     patch_destination.fn("a", 1, b=2)
     expected_order = ["patch_start", "original_start", "original_success", "patch_success"]
     assert [call.method for call in mock_event_logger.calls] == expected_order
-    assert all([call.session == patch_session for call in mock_event_logger.calls])
-    assert all([call.patch_obj == patch_destination for call in mock_event_logger.calls])
-    assert all([call.function_name == "fn" for call in mock_event_logger.calls])
+    assert all(call.session == patch_session for call in mock_event_logger.calls)
+    assert all(
+        call.patch_obj == patch_destination for call in mock_event_logger.calls
+    )
+    assert all(call.function_name == "fn" for call in mock_event_logger.calls)
     patch_start, original_start, original_success, patch_success = mock_event_logger.calls
     assert patch_start.call_args == patch_success.call_args == ("a", 1)
     assert patch_start.call_kwargs == patch_success.call_kwargs == {"b": 2}

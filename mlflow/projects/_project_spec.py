@@ -17,10 +17,14 @@ DEFAULT_CONDA_FILE_NAME = "conda.yaml"
 
 def _find_mlproject(directory):
     filenames = os.listdir(directory)
-    for filename in filenames:
-        if filename.lower() == MLPROJECT_FILE_NAME:
-            return os.path.join(directory, filename)
-    return None
+    return next(
+        (
+            os.path.join(directory, filename)
+            for filename in filenames
+            if filename.lower() == MLPROJECT_FILE_NAME
+        ),
+        None,
+    )
 
 
 def load_project(directory):
@@ -42,30 +46,28 @@ def load_project(directory):
                 "Project configuration (MLproject file) was invalid: Docker "
                 "environment specified but no image attribute found."
             )
-        if docker_env.get("volumes"):
-            if not (
-                isinstance(docker_env["volumes"], list)
-                and all([isinstance(i, str) for i in docker_env["volumes"]])
-            ):
-                raise ExecutionException(
-                    "Project configuration (MLproject file) was invalid: "
-                    "Docker volumes must be a list of strings, "
-                    """e.g.: '["/path1/:/path1", "/path2/:/path2"])"""
-                )
-        if docker_env.get("environment"):
-            if not (
-                isinstance(docker_env["environment"], list)
-                and all(
-                    [isinstance(i, list) or isinstance(i, str) for i in docker_env["environment"]]
-                )
-            ):
-                raise ExecutionException(
-                    "Project configuration (MLproject file) was invalid: "
-                    "environment must be a list containing either strings (to copy environment "
-                    "variables from host system) or lists of string pairs (to define new "
-                    "environment variables)."
-                    """E.g.: '[["NEW_VAR", "new_value"], "VAR_TO_COPY_FROM_HOST"])"""
-                )
+        if docker_env.get("volumes") and not (
+            isinstance(docker_env["volumes"], list)
+            and all(isinstance(i, str) for i in docker_env["volumes"])
+        ):
+            raise ExecutionException(
+                "Project configuration (MLproject file) was invalid: "
+                "Docker volumes must be a list of strings, "
+                """e.g.: '["/path1/:/path1", "/path2/:/path2"])"""
+            )
+        if docker_env.get("environment") and not (
+            isinstance(docker_env["environment"], list)
+            and all(
+                isinstance(i, (list, str)) for i in docker_env["environment"]
+            )
+        ):
+            raise ExecutionException(
+                "Project configuration (MLproject file) was invalid: "
+                "environment must be a list containing either strings (to copy environment "
+                "variables from host system) or lists of string pairs (to define new "
+                "environment variables)."
+                """E.g.: '[["NEW_VAR", "new_value"], "VAR_TO_COPY_FROM_HOST"])"""
+            )
 
     # Validate config if conda_env parameter is present
     conda_path = yaml_obj.get("conda_env")
@@ -122,7 +124,7 @@ class Project(object):
         _, file_extension = os.path.splitext(entry_point)
         ext_to_cmd = {".py": "python", ".sh": os.environ.get("SHELL", "bash")}
         if file_extension in ext_to_cmd:
-            command = "%s %s" % (ext_to_cmd[file_extension], quote(entry_point))
+            command = f"{ext_to_cmd[file_extension]} {quote(entry_point)}"
             if not is_string_type(command):
                 command = command.encode("utf-8")
             return EntryPoint(name=entry_point, parameters={}, command=command)
@@ -145,14 +147,14 @@ class EntryPoint(object):
         self.command = command
 
     def _validate_parameters(self, user_parameters):
-        missing_params = []
-        for name in self.parameters:
-            if name not in user_parameters and self.parameters[name].default is None:
-                missing_params.append(name)
-        if missing_params:
+        if missing_params := [
+            name
+            for name in self.parameters
+            if name not in user_parameters
+            and self.parameters[name].default is None
+        ]:
             raise ExecutionException(
-                "No value given for missing parameters: %s"
-                % ", ".join(["'%s'" % name for name in missing_params])
+                f"""No value given for missing parameters: {", ".join([f"'{name}'" for name in missing_params])}"""
             )
 
     def compute_parameters(self, user_parameters, storage_dir):
@@ -174,24 +176,26 @@ class EntryPoint(object):
         # Validate params before attempting to resolve parameter values
         self._validate_parameters(user_parameters)
         final_params = {}
-        extra_params = {}
-
         parameter_keys = list(self.parameters.keys())
         for key in parameter_keys:
             param_obj = self.parameters[key]
             key_position = parameter_keys.index(key)
             value = user_parameters[key] if key in user_parameters else self.parameters[key].default
             final_params[key] = param_obj.compute_value(value, storage_dir, key_position)
-        for key in user_parameters:
-            if key not in final_params:
-                extra_params[key] = user_parameters[key]
+        extra_params = {
+            key: user_parameters[key]
+            for key in user_parameters
+            if key not in final_params
+        }
         return self._sanitize_param_dict(final_params), self._sanitize_param_dict(extra_params)
 
     def compute_command(self, user_parameters, storage_dir):
         params, extra_params = self.compute_parameters(user_parameters, storage_dir)
         command_with_params = self.command.format(**params)
-        command_arr = [command_with_params]
-        command_arr.extend(["--%s %s" % (key, value) for key, value in extra_params.items()])
+        command_arr = [
+            command_with_params,
+            *[f"--{key} {value}" for key, value in extra_params.items()],
+        ]
         return " ".join(command_arr)
 
     @staticmethod
@@ -214,20 +218,18 @@ class Parameter(object):
     def _compute_uri_value(self, user_param_value):
         if not data.is_uri(user_param_value):
             raise ExecutionException(
-                "Expected URI for parameter %s but got " "%s" % (self.name, user_param_value)
+                f"Expected URI for parameter {self.name} but got {user_param_value}"
             )
         return user_param_value
 
     def _compute_path_value(self, user_param_value, storage_dir, key_position):
-        local_path = get_local_path_or_none(user_param_value)
-        if local_path:
+        if local_path := get_local_path_or_none(user_param_value):
             if not os.path.exists(local_path):
                 raise ExecutionException(
-                    "Got value %s for parameter %s, but no such file or "
-                    "directory was found." % (user_param_value, self.name)
+                    f"Got value {user_param_value} for parameter {self.name}, but no such file or directory was found."
                 )
             return os.path.abspath(local_path)
-        target_sub_dir = "param_{}".format(key_position)
+        target_sub_dir = f"param_{key_position}"
         download_dir = os.path.join(storage_dir, target_sub_dir)
         os.mkdir(download_dir)
         return artifact_utils._download_artifact_from_uri(

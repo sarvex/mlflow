@@ -72,11 +72,10 @@ def put_block_list(sas_url, block_list, headers):
 def _append_query_parameters(url, parameters):
     parsed_url = urllib.parse.urlparse(url)
     query_dict = dict(urllib.parse.parse_qsl(parsed_url.query))
-    query_dict.update(parameters)
+    query_dict |= parameters
     new_query = urllib.parse.urlencode(query_dict)
     new_url_components = parsed_url._replace(query=new_query)
-    new_url = urllib.parse.urlunparse(new_url_components)
-    return new_url
+    return urllib.parse.urlunparse(new_url_components)
 
 
 def _build_block_list_xml(block_list):
@@ -85,7 +84,7 @@ def _build_block_list_xml(block_list):
         # Because block IDs are base64-encoded and base64 strings do not contain
         # XML special characters, we can safely insert the block ID directly into
         # the XML document
-        xml += "<Uncommitted>{}</Uncommitted>\n".format(block_id)
+        xml += f"<Uncommitted>{block_id}</Uncommitted>\n"
     xml += "</BlockList>"
     return xml
 
@@ -98,32 +97,30 @@ def _is_valid_put_block_list_header(header_name):
              en-us/rest/api/storageservices/
              specifying-conditional-headers-for-blob-service-operations#Subheading1.
     """
-    return header_name.startswith("x-ms-meta-") or header_name in set(
-        [
-            "Authorization",
-            "Date",
-            "x-ms-date",
-            "x-ms-version",
-            "Content-Length",
-            "Content-MD5",
-            "x-ms-content-crc64",
-            "x-ms-blob-cache-control",
-            "x-ms-blob-content-type",
-            "x-ms-blob-content-encoding",
-            "x-ms-blob-content-language",
-            "x-ms-blob-content-md5",
-            "x-ms-encryption-scope",
-            "x-ms-tags",
-            "x-ms-lease-id",
-            "x-ms-client-request-id",
-            "x-ms-blob-content-disposition",
-            "x-ms-access-tier",
-            "If-Modified-Since",
-            "If-Unmodified-Since",
-            "If-Match",
-            "If-None-Match",
-        ]
-    )
+    return header_name.startswith("x-ms-meta-") or header_name in {
+        "Authorization",
+        "Date",
+        "x-ms-date",
+        "x-ms-version",
+        "Content-Length",
+        "Content-MD5",
+        "x-ms-content-crc64",
+        "x-ms-blob-cache-control",
+        "x-ms-blob-content-type",
+        "x-ms-blob-content-encoding",
+        "x-ms-blob-content-language",
+        "x-ms-blob-content-md5",
+        "x-ms-encryption-scope",
+        "x-ms-tags",
+        "x-ms-lease-id",
+        "x-ms-client-request-id",
+        "x-ms-blob-content-disposition",
+        "x-ms-access-tier",
+        "If-Modified-Since",
+        "If-Unmodified-Since",
+        "If-Match",
+        "If-None-Match",
+    }
 
 
 def _is_valid_put_block_header(header_name):
@@ -134,19 +131,17 @@ def _is_valid_put_block_header(header_name):
              https://docs.microsoft.com/en-us/rest/api/storageservices/put-block#
              request-headers-customer-provided-encryption-keys.
     """
-    return header_name in set(
-        [
-            "Authorization",
-            "x-ms-date",
-            "x-ms-version",
-            "Content-Length",
-            "Content-MD5",
-            "x-ms-content-crc64",
-            "x-ms-encryption-scope",
-            "x-ms-lease-id",
-            "x-ms-client-request-id",
-            "x-ms-encryption-key",
-            "x-ms-encryption-key-sha256",
-            "x-ms-encryption-algorithm",
-        ]
-    )
+    return header_name in {
+        "Authorization",
+        "x-ms-date",
+        "x-ms-version",
+        "Content-Length",
+        "Content-MD5",
+        "x-ms-content-crc64",
+        "x-ms-encryption-scope",
+        "x-ms-lease-id",
+        "x-ms-client-request-id",
+        "x-ms-encryption-key",
+        "x-ms-encryption-key-sha256",
+        "x-ms-encryption-algorithm",
+    }

@@ -356,7 +356,7 @@ def test_parse_json_input_records_oriented():
     p1 = pd.DataFrame.from_dict(data)
     p2 = pyfunc_scoring_server.parse_json_input(p1.to_json(orient="records"), orient="records")
     # "records" orient may shuffle column ordering. Hence comparing each column Series
-    for col in data.keys():
+    for col in data:
         assert all(p1[col] == p2[col])
 
 
@@ -405,7 +405,7 @@ def test_records_oriented_json_to_df():
     df = pyfunc_scoring_server.parse_json_input(jstr, orient="records")
 
     assert set(df.columns) == {"zip", "cost", "score"}
-    assert set(str(dt) for dt in df.dtypes) == {"object", "float64", "int64"}
+    assert {str(dt) for dt in df.dtypes} == {"object", "float64", "int64"}
 
 
 def _shuffle_pdf(pdf):
@@ -424,7 +424,7 @@ def test_split_oriented_json_to_df():
     df = pyfunc_scoring_server.parse_json_input(jstr, orient="split")
 
     assert set(df.columns) == {"zip", "cost", "count"}
-    assert set(str(dt) for dt in df.dtypes) == {"object", "float64", "int64"}
+    assert {str(dt) for dt in df.dtypes} == {"object", "float64", "int64"}
 
 
 def test_parse_with_schema(pandas_df_with_all_types):
@@ -524,6 +524,7 @@ def test_infer_and_parse_json_input():
 
 @pytest.mark.large
 def test_serving_model_with_schema(pandas_df_with_all_types):
+
     class TestModel(PythonModel):
         def predict(self, context, model_input):
             return [[k, str(v)] for k, v in model_input.dtypes.items()]
@@ -536,7 +537,7 @@ def test_serving_model_with_schema(pandas_df_with_all_types):
                 "model", python_model=TestModel(), signature=ModelSignature(schema)
             )
         response = pyfunc_serve_and_score_model(
-            model_uri="runs:/{}/model".format(run.info.run_id),
+            model_uri=f"runs:/{run.info.run_id}/model",
             data=json.dumps(df.to_dict(orient="split"), cls=NumpyEncoder),
             content_type=pyfunc_scoring_server.CONTENT_TYPE_JSON_SPLIT_ORIENTED,
             extra_args=["--no-conda"],
@@ -544,8 +545,11 @@ def test_serving_model_with_schema(pandas_df_with_all_types):
         response_json = json.loads(response.content)
         assert response_json == [[k, str(v)] for k, v in pandas_df_with_all_types.dtypes.items()]
         response = pyfunc_serve_and_score_model(
-            model_uri="runs:/{}/model".format(run.info.run_id),
-            data=json.dumps(pandas_df_with_all_types.to_dict(orient="records"), cls=NumpyEncoder),
+            model_uri=f"runs:/{run.info.run_id}/model",
+            data=json.dumps(
+                pandas_df_with_all_types.to_dict(orient="records"),
+                cls=NumpyEncoder,
+            ),
             content_type=pyfunc_scoring_server.CONTENT_TYPE_JSON_RECORDS_ORIENTED,
             extra_args=["--no-conda"],
         )
@@ -563,7 +567,7 @@ def test_split_oriented_json_to_numpy_array():
     df = pyfunc_scoring_server.parse_split_oriented_json_input_to_numpy(jstr)
 
     assert set(df.columns) == {"zip", "cost", "count"}
-    assert set(str(dt) for dt in df.dtypes) == {"object", "float64", "int64"}
+    assert {str(dt) for dt in df.dtypes} == {"object", "float64", "int64"}
 
 
 def test_get_jsonnable_obj():
@@ -578,6 +582,7 @@ def test_get_jsonnable_obj():
 
 @pytest.mark.large
 def test_parse_json_input_including_path():
+
     class TestModel(PythonModel):
         def predict(self, context, model_input):
             return 1
@@ -593,7 +598,7 @@ def test_parse_json_input_including_path():
     ).to_json(orient="split")
 
     response_records_content_type = pyfunc_serve_and_score_model(
-        model_uri="runs:/{}/model".format(run.info.run_id),
+        model_uri=f"runs:/{run.info.run_id}/model",
         data=pandas_split_content,
         content_type=pyfunc_scoring_server.CONTENT_TYPE_JSON,
     )

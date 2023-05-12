@@ -16,7 +16,7 @@ from mlflow import (
 )
 
 if __name__ == "__main__":
-    print("Running {} with tracking URI {}".format(sys.argv[0], get_tracking_uri()))
+    print(f"Running {sys.argv[0]} with tracking URI {get_tracking_uri()}")
     log_param("param1", 5)
     log_metric("foo", 5)
     log_metric("foo", 6)
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # Get run metadata & data from the tracking server
     service = mlflow.tracking.MlflowClient()
     run = service.get_run(run_id)
-    print("Metadata & data for run with UUID %s: %s" % (run_id, run))
+    print(f"Metadata & data for run with UUID {run_id}: {run}")
     local_dir = tempfile.mkdtemp()
     message = "test artifact written during run %s within artifact URI %s\n" % (
         active_run().info.run_id,

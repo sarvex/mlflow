@@ -12,8 +12,7 @@ class UCIHousing(paddle.nn.Layer):
         self.fc_ = paddle.nn.Linear(13, 1, None)
 
     def forward(self, inputs):
-        pred = self.fc_(inputs)
-        return pred
+        return self.fc_(inputs)
 
 
 model = paddle.Model(UCIHousing())
@@ -24,7 +23,7 @@ model.fit(train_dataset, epochs=6, batch_size=8, verbose=1)
 
 with mlflow.start_run() as run:
     mlflow.paddle.log_model(model, "model")
-    print("Model saved in run %s" % run.info.run_uuid)
+    print(f"Model saved in run {run.info.run_uuid}")
 
     # load model
     model_path = mlflow.get_artifact_uri("model")

@@ -15,8 +15,7 @@ version = (
 def package_files(directory):
     paths = []
     for (path, _, filenames) in os.walk(directory):
-        for filename in filenames:
-            paths.append(os.path.join("..", path, filename))
+        paths.extend(os.path.join("..", path, filename) for filename in filenames)
     return paths
 
 
@@ -82,7 +81,7 @@ CORE_REQUIREMENTS = SKINNY_REQUIREMENTS + [
 ]
 
 _is_mlflow_skinny = bool(os.environ.get(_MLFLOW_SKINNY_ENV_VAR))
-logging.debug("{} env var is set: {}".format(_MLFLOW_SKINNY_ENV_VAR, _is_mlflow_skinny))
+logging.debug(f"{_MLFLOW_SKINNY_ENV_VAR} env var is set: {_is_mlflow_skinny}")
 
 setup(
     name="mlflow" if not _is_mlflow_skinny else "mlflow-skinny",

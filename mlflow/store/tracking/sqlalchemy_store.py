@@ -130,7 +130,7 @@ class SqlAlchemyStore(AbstractStore):
             SqlLatestMetric.__tablename__,
         ]
         inspected_tables = set(sqlalchemy.inspect(self.engine).get_table_names())
-        if any([table not in inspected_tables for table in expected_tables]):
+        if any(table not in inspected_tables for table in expected_tables):
             mlflow.store.db.utils._initialize_tables(self.engine)
         Base.metadata.bind = self.engine
         SessionMaker = sqlalchemy.orm.sessionmaker(bind=self.engine)
@@ -181,10 +181,7 @@ class SqlAlchemyStore(AbstractStore):
         }
 
         def decorate(s):
-            if is_string_type(s):
-                return "'{}'".format(s)
-            else:
-                return "{}".format(s)
+            return "'{}'".format(s) if is_string_type(s) else "{}".format(s)
 
         # Get a list of keys to ensure we have a deterministic ordering
         columns = list(default_experiment.keys())
@@ -210,16 +207,13 @@ class SqlAlchemyStore(AbstractStore):
 
     def _get_or_create(self, session, model, **kwargs):
         instance = session.query(model).filter_by(**kwargs).first()
-        created = False
-
         if instance:
-            return instance, created
-        else:
-            instance = model(**kwargs)
-            self._save_to_db(objs=instance, session=session)
-            created = True
+            created = False
 
-        return instance, created
+            return instance, created
+        instance = model(**kwargs)
+        self._save_to_db(objs=instance, session=session)
+        return instance, True
 
     def _get_artifact_location(self, experiment_id):
         return append_to_uri_path(self.artifact_root_uri, str(experiment_id))
@@ -245,7 +239,7 @@ class SqlAlchemyStore(AbstractStore):
                     experiment.artifact_location = self._get_artifact_location(eid)
             except sqlalchemy.exc.IntegrityError as e:
                 raise MlflowException(
-                    "Experiment(name={}) already exists. " "Error: {}".format(name, str(e)),
+                    f"Experiment(name={name}) already exists. Error: {str(e)}",
                     RESOURCE_ALREADY_EXISTS,
                 )
 
@@ -349,7 +343,8 @@ class SqlAlchemyStore(AbstractStore):
 
         if experiment is None:
             raise MlflowException(
-                "No Experiment with id={} exists".format(experiment_id), RESOURCE_DOES_NOT_EXIST
+                f"No Experiment with id={experiment_id} exists",
+                RESOURCE_DOES_NOT_EXIST,
             )
 
         return experiment
@@ -455,11 +450,11 @@ class SqlAlchemyStore(AbstractStore):
 
         if len(runs) == 0:
             raise MlflowException(
-                "Run with id={} not found".format(run_uuid), RESOURCE_DOES_NOT_EXIST
+                f"Run with id={run_uuid} not found", RESOURCE_DOES_NOT_EXIST
             )
         if len(runs) > 1:
             raise MlflowException(
-                "Expected only 1 run with id={}. Found {}.".format(run_uuid, len(runs)),
+                f"Expected only 1 run with id={run_uuid}. Found {len(runs)}.",
                 INVALID_STATE,
             )
 
@@ -484,26 +479,21 @@ class SqlAlchemyStore(AbstractStore):
     def _check_run_is_active(self, run):
         if run.lifecycle_stage != LifecycleStage.ACTIVE:
             raise MlflowException(
-                "The run {} must be in the 'active' state. Current state is {}.".format(
-                    run.run_uuid, run.lifecycle_stage
-                ),
+                f"The run {run.run_uuid} must be in the 'active' state. Current state is {run.lifecycle_stage}.",
                 INVALID_PARAMETER_VALUE,
             )
 
     def _check_experiment_is_active(self, experiment):
         if experiment.lifecycle_stage != LifecycleStage.ACTIVE:
             raise MlflowException(
-                "The experiment {} must be in the 'active' state. "
-                "Current state is {}.".format(experiment.experiment_id, experiment.lifecycle_stage),
+                f"The experiment {experiment.experiment_id} must be in the 'active' state. Current state is {experiment.lifecycle_stage}.",
                 INVALID_PARAMETER_VALUE,
             )
 
     def _check_run_is_deleted(self, run):
         if run.lifecycle_stage != LifecycleStage.DELETED:
             raise MlflowException(
-                "The run {} must be in the 'deleted' state. Current state is {}.".format(
-                    run.run_uuid, run.lifecycle_stage
-                ),
+                f"The run {run.run_uuid} must be in the 'deleted' state. Current state is {run.lifecycle_stage}.",
                 INVALID_PARAMETER_VALUE,
             )
 
@@ -676,13 +666,12 @@ class SqlAlchemyStore(AbstractStore):
                 # using the session. In this case, we re-use the session because the SqlRun, `run`,
                 # is lazily evaluated during the invocation of `run.params`.
                 session.rollback()
-                existing_params = [p.value for p in run.params if p.key == param.key]
-                if len(existing_params) > 0:
+                if existing_params := [
+                    p.value for p in run.params if p.key == param.key
+                ]:
                     old_value = existing_params[0]
                     raise MlflowException(
-                        "Changing param values is not allowed. Param with key='{}' was already"
-                        " logged with value='{}' for run ID='{}'. Attempted logging new value"
-                        " '{}'.".format(param.key, old_value, run_id, param.value),
+                        f"Changing param values is not allowed. Param with key='{param.key}' was already logged with value='{old_value}' for run ID='{run_id}'. Attempted logging new value '{param.value}'.",
                         INVALID_PARAMETER_VALUE,
                     )
                 else:
@@ -731,7 +720,7 @@ class SqlAlchemyStore(AbstractStore):
             filtered_tags = session.query(SqlTag).filter_by(run_uuid=run_id, key=key).all()
             if len(filtered_tags) == 0:
                 raise MlflowException(
-                    "No tag with name: {} in run with id {}".format(key, run_id),
+                    f"No tag with name: {key} in run with id {run_id}",
                     error_code=RESOURCE_DOES_NOT_EXIST,
                 )
             elif len(filtered_tags) > 1:
@@ -824,16 +813,15 @@ class SqlAlchemyStore(AbstractStore):
 
         if not isinstance(mlflow_model, Model):
             raise TypeError(
-                "Argument 'mlflow_model' should be mlflow.models.Model, got '{}'".format(
-                    type(mlflow_model)
-                )
+                f"Argument 'mlflow_model' should be mlflow.models.Model, got '{type(mlflow_model)}'"
             )
         model_dict = mlflow_model.to_dict()
         with self.ManagedSessionMaker() as session:
             run = self._get_run(run_uuid=run_id, session=session)
             self._check_run_is_active(run)
-            previous_tag = [t for t in run.tags if t.key == MLFLOW_LOGGED_MODELS]
-            if previous_tag:
+            if previous_tag := [
+                t for t in run.tags if t.key == MLFLOW_LOGGED_MODELS
+            ]:
                 value = json.dumps(json.loads(previous_tag[0].value) + [model_dict])
             else:
                 value = json.dumps([model_dict])
@@ -882,7 +870,8 @@ def _to_sqlalchemy_filtering_statement(sql_statement, session):
         return None
     else:
         raise MlflowException(
-            "Invalid search expression type '%s'" % key_type, error_code=INVALID_PARAMETER_VALUE
+            f"Invalid search expression type '{key_type}'",
+            error_code=INVALID_PARAMETER_VALUE,
         )
 
     if comparator in SearchUtils.CASE_INSENSITIVE_STRING_COMPARISON_OPERATORS:
@@ -915,13 +904,11 @@ def _get_orderby_clauses(order_by_list, session):
 
     clauses = []
     ordering_joins = []
-    clause_id = 0
     observed_order_by_clauses = set()
     # contrary to filters, it is not easily feasible to separately handle sorting
     # on attributes and on joined tables as we must keep all clauses in the same order
     if order_by_list:
-        for order_by_clause in order_by_list:
-            clause_id += 1
+        for clause_id, order_by_clause in enumerate(order_by_list, start=1):
             (key_type, key, ascending) = SearchUtils.parse_order_by_for_search_runs(order_by_clause)
             if SearchUtils.is_string_attribute(
                 key_type, key, "="
@@ -936,7 +923,7 @@ def _get_orderby_clauses(order_by_list, session):
                     entity = SqlParam
                 else:
                     raise MlflowException(
-                        "Invalid identifier type '%s'" % key_type,
+                        f"Invalid identifier type '{key_type}'",
                         error_code=INVALID_PARAMETER_VALUE,
                     )
 
@@ -965,17 +952,17 @@ def _get_orderby_clauses(order_by_list, session):
                             (order_value.is_(None), 1),
                         ],
                         else_=0,
-                    ).label("clause_%s" % clause_id)
+                    ).label(f"clause_{clause_id}")
                 )
             else:  # other entities do not have an 'is_nan' field
                 clauses.append(
-                    sql.case([(order_value.is_(None), 1)], else_=0).label("clause_%s" % clause_id)
+                    sql.case([(order_value.is_(None), 1)], else_=0).label(
+                        f"clause_{clause_id}"
+                    )
                 )
 
             if (key_type, key) in observed_order_by_clauses:
-                raise MlflowException(
-                    "`order_by` contains duplicate fields: {}".format(order_by_list)
-                )
+                raise MlflowException(f"`order_by` contains duplicate fields: {order_by_list}")
             observed_order_by_clauses.add((key_type, key))
 
             if ascending:

@@ -34,7 +34,7 @@ def test_run_command_creation():  # pylint: disable=unused-argument
     ] == command
 
 
-def test_valid_kubernetes_job_spec():  # pylint: disable=unused-argument
+def test_valid_kubernetes_job_spec():    # pylint: disable=unused-argument
     """
     Tests job specification for Kubernetes.
     """
@@ -71,7 +71,7 @@ def test_valid_kubernetes_job_spec():  # pylint: disable=unused-argument
     )
     container_spec = job_definition["spec"]["template"]["spec"]["containers"][0]
     assert container_spec["name"] == project_name
-    assert container_spec["image"] == image_tag + "@" + image_digest
+    assert container_spec["image"] == f"{image_tag}@{image_digest}"
     assert container_spec["command"] == command
     assert 2 == len(container_spec["env"])
     assert container_spec["env"][0]["name"] == "DUMMY"

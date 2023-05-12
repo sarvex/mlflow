@@ -42,14 +42,13 @@ def _get_optimizer_name(optimizer):
     """
     if Version(pl.__version__) < Version("1.1.0"):
         return optimizer.__class__.__name__
-    else:
-        from pytorch_lightning.core.optimizer import LightningOptimizer
+    from pytorch_lightning.core.optimizer import LightningOptimizer
 
-        return (
-            optimizer._optimizer.__class__.__name__
-            if isinstance(optimizer, LightningOptimizer)
-            else optimizer.__class__.__name__
-        )
+    return (
+        optimizer._optimizer.__class__.__name__
+        if isinstance(optimizer, LightningOptimizer)
+        else optimizer.__class__.__name__
+    )
 
 
 class __MLflowPLCallback(pl.Callback, metaclass=ExceptionSafeAbstractClass):
@@ -177,7 +176,7 @@ class __MLflowPLCallback(pl.Callback, metaclass=ExceptionSafeAbstractClass):
             params["optimizer_name"] = _get_optimizer_name(optimizer)
 
             if hasattr(optimizer, "defaults"):
-                params.update(optimizer.defaults)
+                params |= optimizer.defaults
 
         self.client.log_params(self.run_id, params)
         self.client.flush(synchronous=True)

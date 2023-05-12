@@ -266,7 +266,7 @@ def save_model(
     _logger.info("Validation succeeded!")
 
     if os.path.exists(path):
-        raise MlflowException("Path '{}' already exists".format(path), DIRECTORY_NOT_EMPTY)
+        raise MlflowException(f"Path '{path}' already exists", DIRECTORY_NOT_EMPTY)
     os.makedirs(path)
     if mlflow_model is None:
         mlflow_model = Model()
@@ -404,8 +404,7 @@ def _load_tensorflow_saved_model(tf_saved_model_dir, tf_meta_graph_tags, tf_sign
     loaded_sig = loaded.signatures
     if tf_signature_def_key not in loaded_sig:
         raise MlflowException(
-            "Could not find signature def key %s. Available keys are: %s"
-            % (tf_signature_def_key, list(loaded_sig.keys()))
+            f"Could not find signature def key {tf_signature_def_key}. Available keys are: {list(loaded_sig.keys())}"
         )
     return loaded_sig[tf_signature_def_key]
 
@@ -491,7 +490,7 @@ class _TF2Wrapper(object):
 
         raw_preds = self.infer(**feed_dict)
         pred_dict = {col_name: raw_preds[col_name].numpy() for col_name in raw_preds.keys()}
-        for col in pred_dict.keys():
+        for col in pred_dict:
             if all(len(element) == 1 for element in pred_dict[col]):
                 pred_dict[col] = pred_dict[col].ravel()
             else:
@@ -561,29 +560,31 @@ def _log_event(event):
     if event.WhichOneof("what") == "summary":
         summary = event.summary
         for v in summary.value:
-            if v.HasField("simple_value"):
-                # NB: Most TensorFlow APIs use one-indexing for epochs, while tf.Keras
-                # uses zero-indexing. Accordingly, the modular arithmetic used here is slightly
-                # different from the arithmetic used in `__MLflowTfKeras2Callback.on_epoch_end`,
-                # which provides metric logging hooks for tf.Keras
-                if (event.step - 1) % _LOG_EVERY_N_STEPS == 0:
-                    _add_to_queue(
-                        key=v.tag,
-                        value=v.simple_value,
-                        step=event.step,
-                        time=int(time.time() * 1000),
-                        run_id=mlflow.active_run().info.run_id,
-                    )
+            if (
+                v.HasField("simple_value")
+                and (event.step - 1) % _LOG_EVERY_N_STEPS == 0
+            ):
+                _add_to_queue(
+                    key=v.tag,
+                    value=v.simple_value,
+                    step=event.step,
+                    time=int(time.time() * 1000),
+                    run_id=mlflow.active_run().info.run_id,
+                )
 
 
 @exception_safe_function
 def _get_tensorboard_callback(lst):
     import tensorflow
 
-    for x in lst:
-        if isinstance(x, tensorflow.keras.callbacks.TensorBoard):
-            return x
-    return None
+    return next(
+        (
+            x
+            for x in lst
+            if isinstance(x, tensorflow.keras.callbacks.TensorBoard)
+        ),
+        None,
+    )
 
 
 # A representation of a TensorBoard event logging directory with two attributes:

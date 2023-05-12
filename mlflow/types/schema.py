@@ -86,8 +86,7 @@ class ColSpec(object):
             )
         if not isinstance(self.type, DataType):
             raise TypeError(
-                "Expected mlflow.models.signature.Datatype or str for the 'type' "
-                "argument, but got {}".format(self.type.__class__)
+                f"Expected mlflow.models.signature.Datatype or str for the 'type' argument, but got {self.type.__class__}"
             )
 
     @property
@@ -234,9 +233,7 @@ class TensorSpec(object):
         if kwargs["type"] != "tensor":
             raise MlflowException("Type mismatch, TensorSpec expects `tensor` as the type")
         tensor_info = TensorInfo.from_json_dict(**kwargs["tensor-spec"])
-        return cls(
-            tensor_info.dtype, tensor_info.shape, kwargs["name"] if "name" in kwargs else None
-        )
+        return cls(tensor_info.dtype, tensor_info.shape, kwargs.get("name", None))
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TensorSpec):
@@ -270,8 +267,7 @@ class Schema(object):
             or all(map(lambda x: x.name is not None, inputs))
         ):
             raise MlflowException(
-                "Creating Schema with a combination of named and unnamed inputs "
-                "is not allowed. Got input names {}".format([x.name for x in inputs])
+                f"Creating Schema with a combination of named and unnamed inputs is not allowed. Got input names {[x.name for x in inputs]}"
             )
         if not (
             all(map(lambda x: isinstance(x, TensorSpec), inputs))
@@ -411,10 +407,7 @@ class Schema(object):
         return cls([read_input(x) for x in json.loads(json_str)])
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, Schema):
-            return self.inputs == other.inputs
-        else:
-            return False
+        return self.inputs == other.inputs if isinstance(other, Schema) else False
 
     def __repr__(self) -> str:
         return repr(self.inputs)

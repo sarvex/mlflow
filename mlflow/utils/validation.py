@@ -82,12 +82,12 @@ def _validate_metric_name(name):
     """Check that `name` is a valid metric name and raise an exception if it isn't."""
     if name is None or not _VALID_PARAM_AND_METRIC_NAMES.match(name):
         raise MlflowException(
-            "Invalid metric name: '%s'. %s" % (name, _BAD_CHARACTERS_MESSAGE),
+            f"Invalid metric name: '{name}'. {_BAD_CHARACTERS_MESSAGE}",
             INVALID_PARAMETER_VALUE,
         )
     if path_not_unique(name):
         raise MlflowException(
-            "Invalid metric name: '%s'. %s" % (name, bad_path_message(name)),
+            f"Invalid metric name: '{name}'. {bad_path_message(name)}",
             INVALID_PARAMETER_VALUE,
         )
 
@@ -186,17 +186,13 @@ def _validate_list_experiments_max_results(max_results):
 
     if max_results < 1:
         raise MlflowException(
-            "Invalid value for request parameter max_results. "
-            "It must be at least 1, but got value {}".format(max_results),
+            f"Invalid value for request parameter max_results. It must be at least 1, but got value {max_results}",
             INVALID_PARAMETER_VALUE,
         )
 
     if max_results > MAX_EXPERIMENTS_LISTED_PER_PAGE:
         raise MlflowException(
-            "Invalid value for request parameter max_results. "
-            "It must be at most {}, but got value {}".format(
-                MAX_EXPERIMENTS_LISTED_PER_PAGE, max_results
-            ),
+            f"Invalid value for request parameter max_results. It must be at most {MAX_EXPERIMENTS_LISTED_PER_PAGE}, but got value {max_results}",
             INVALID_PARAMETER_VALUE,
         )
 
@@ -223,12 +219,12 @@ def _validate_param_name(name):
     """Check that `name` is a valid parameter name and raise an exception if it isn't."""
     if name is None or not _VALID_PARAM_AND_METRIC_NAMES.match(name):
         raise MlflowException(
-            "Invalid parameter name: '%s'. %s" % (name, _BAD_CHARACTERS_MESSAGE),
+            f"Invalid parameter name: '{name}'. {_BAD_CHARACTERS_MESSAGE}",
             INVALID_PARAMETER_VALUE,
         )
     if path_not_unique(name):
         raise MlflowException(
-            "Invalid parameter name: '%s'. %s" % (name, bad_path_message(name)),
+            f"Invalid parameter name: '{name}'. {bad_path_message(name)}",
             INVALID_PARAMETER_VALUE,
         )
 
@@ -238,19 +234,20 @@ def _validate_tag_name(name):
     # Reuse param & metric check.
     if name is None or not _VALID_PARAM_AND_METRIC_NAMES.match(name):
         raise MlflowException(
-            "Invalid tag name: '%s'. %s" % (name, _BAD_CHARACTERS_MESSAGE), INVALID_PARAMETER_VALUE
+            f"Invalid tag name: '{name}'. {_BAD_CHARACTERS_MESSAGE}",
+            INVALID_PARAMETER_VALUE,
         )
     if path_not_unique(name):
         raise MlflowException(
-            "Invalid tag name: '%s'. %s" % (name, bad_path_message(name)), INVALID_PARAMETER_VALUE
+            f"Invalid tag name: '{name}'. {bad_path_message(name)}",
+            INVALID_PARAMETER_VALUE,
         )
 
 
 def _validate_length_limit(entity_name, limit, value):
     if len(value) > limit:
         raise MlflowException(
-            "%s '%s' had length %s, which exceeded length limit of %s"
-            % (entity_name, value[:250], len(value), limit),
+            f"{entity_name} '{value[:250]}' had length {len(value)}, which exceeded length limit of {limit}",
             error_code=INVALID_PARAMETER_VALUE,
         )
 
@@ -258,14 +255,17 @@ def _validate_length_limit(entity_name, limit, value):
 def _validate_run_id(run_id):
     """Check that `run_id` is a valid run ID and raise an exception if it isn't."""
     if _RUN_ID_REGEX.match(run_id) is None:
-        raise MlflowException("Invalid run ID: '%s'" % run_id, error_code=INVALID_PARAMETER_VALUE)
+        raise MlflowException(
+            f"Invalid run ID: '{run_id}'", error_code=INVALID_PARAMETER_VALUE
+        )
 
 
 def _validate_experiment_id(exp_id):
     """Check that `experiment_id`is a valid string or None, raise an exception if it isn't."""
     if exp_id is not None and _EXPERIMENT_ID_REGEX.match(exp_id) is None:
         raise MlflowException(
-            "Invalid experiment ID: '%s'" % exp_id, error_code=INVALID_PARAMETER_VALUE
+            f"Invalid experiment ID: '{exp_id}'",
+            error_code=INVALID_PARAMETER_VALUE,
         )
 
 
@@ -318,12 +318,13 @@ def _validate_experiment_name(experiment_name):
     """Check that `experiment_name` is a valid string and raise an exception if it isn't."""
     if experiment_name == "" or experiment_name is None:
         raise MlflowException(
-            "Invalid experiment name: '%s'" % experiment_name, error_code=INVALID_PARAMETER_VALUE
+            f"Invalid experiment name: '{experiment_name}'",
+            error_code=INVALID_PARAMETER_VALUE,
         )
 
     if not is_string_type(experiment_name):
         raise MlflowException(
-            "Invalid experiment name: %s. Expects a string." % experiment_name,
+            f"Invalid experiment name: {experiment_name}. Expects a string.",
             error_code=INVALID_PARAMETER_VALUE,
         )
 
@@ -338,7 +339,7 @@ def _validate_model_version(model_version):
         model_version = int(model_version)
     except ValueError:
         raise MlflowException(
-            "Model version must be an integer, got '{}'".format(model_version),
+            f"Model version must be an integer, got '{model_version}'",
             error_code=INVALID_PARAMETER_VALUE,
         )
 
@@ -346,7 +347,7 @@ def _validate_model_version(model_version):
 def _validate_experiment_artifact_location(artifact_location):
     if artifact_location is not None and artifact_location.startswith("runs:"):
         raise MlflowException(
-            "Artifact location cannot be a runs:/ URI. Given: '%s'" % artifact_location,
+            f"Artifact location cannot be a runs:/ URI. Given: '{artifact_location}'",
             error_code=INVALID_PARAMETER_VALUE,
         )
 
@@ -354,5 +355,5 @@ def _validate_experiment_artifact_location(artifact_location):
 def _validate_db_type_string(db_type):
     """validates db_type parsed from DB URI is supported"""
     if db_type not in DATABASE_ENGINES:
-        error_msg = "Invalid database engine: '%s'. '%s'" % (db_type, _UNSUPPORTED_DB_TYPE_MSG)
+        error_msg = f"Invalid database engine: '{db_type}'. '{_UNSUPPORTED_DB_TYPE_MSG}'"
         raise MlflowException(error_msg, INVALID_PARAMETER_VALUE)

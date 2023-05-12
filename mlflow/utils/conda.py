@@ -27,17 +27,17 @@ def get_conda_command(conda_env_name):
     if os.name != "nt" and ("CONDA_EXE" in os.environ or "MLFLOW_CONDA_HOME" in os.environ):
         conda_path = get_conda_bin_executable("conda")
         activate_conda_env = [
-            "source {}/../etc/profile.d/conda.sh".format(os.path.dirname(conda_path))
+            f"source {os.path.dirname(conda_path)}/../etc/profile.d/conda.sh"
         ]
-        activate_conda_env += ["conda activate {} 1>&2".format(conda_env_name)]
+        activate_conda_env += [f"conda activate {conda_env_name} 1>&2"]
     else:
         activate_path = get_conda_bin_executable("activate")
         # in case os name is not 'nt', we are not running on windows. It introduces
         # bash command otherwise.
         if os.name != "nt":
-            return ["source %s %s 1>&2" % (activate_path, conda_env_name)]
+            return [f"source {activate_path} {conda_env_name} 1>&2"]
         else:
-            return ["conda activate %s" % (conda_env_name)]
+            return [f"conda activate {conda_env_name}"]
     return activate_conda_env
 
 
@@ -51,9 +51,8 @@ def get_conda_bin_executable(executable_name):
     ``mlflow.projects.MLFLOW_CONDA_HOME`` is unspecified, this method simply returns the passed-in
     executable name.
     """
-    conda_home = os.environ.get(MLFLOW_CONDA_HOME)
-    if conda_home:
-        return os.path.join(conda_home, "bin/%s" % executable_name)
+    if conda_home := os.environ.get(MLFLOW_CONDA_HOME):
+        return os.path.join(conda_home, f"bin/{executable_name}")
     # Use CONDA_EXE as per https://github.com/conda/conda/issues/7126
     if "CONDA_EXE" in os.environ:
         conda_bin_dir = os.path.dirname(os.environ["CONDA_EXE"])
@@ -65,7 +64,7 @@ def _get_conda_env_name(conda_env_path, env_id=None):
     conda_env_contents = open(conda_env_path).read() if conda_env_path else ""
     if env_id:
         conda_env_contents += env_id
-    return "mlflow-%s" % hashlib.sha1(conda_env_contents.encode("utf-8")).hexdigest()
+    return f'mlflow-{hashlib.sha1(conda_env_contents.encode("utf-8")).hexdigest()}'
 
 
 def _get_conda_executable_for_create_env():
@@ -75,13 +74,11 @@ def _get_conda_executable_for_create_env():
 
     """
     conda_env_create_cmd = os.environ.get(MLFLOW_CONDA_CREATE_ENV_CMD)
-    if conda_env_create_cmd is not None:
-        conda_env_create_path = get_conda_bin_executable(conda_env_create_cmd)
-    else:
-        # Use the same as conda_path
-        conda_env_create_path = get_conda_bin_executable("conda")
-
-    return conda_env_create_path
+    return (
+        get_conda_bin_executable(conda_env_create_cmd)
+        if conda_env_create_cmd is not None
+        else get_conda_bin_executable("conda")
+    )
 
 
 def get_or_create_conda_env(conda_env_path, env_id=None):

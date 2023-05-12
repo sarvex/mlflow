@@ -49,6 +49,7 @@ def get_dataset():
 
 @pytest.fixture
 def pd_model():
+
     class Regressor(paddle.nn.Layer):
         def __init__(self):
             super(Regressor, self).__init__()
@@ -80,9 +81,7 @@ def pd_model():
             loss = F.square_error_cost(predicts, label=prices)
             avg_loss = paddle.mean(loss)
             if iter_id % 20 == 0:
-                print(
-                    "epoch: {}, iter: {}, loss is: {}".format(epoch_id, iter_id, avg_loss.numpy())
-                )
+                print(f"epoch: {epoch_id}, iter: {iter_id}, loss is: {avg_loss.numpy()}")
 
             avg_loss.backward()
             opt.step()
@@ -132,7 +131,7 @@ def test_model_load_from_remote_uri_succeeds(pd_model, model_path, mock_s3_bucke
     artifact_repo = S3ArtifactRepository(artifact_root)
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     reloaded_model = mlflow.paddle.load_model(model_uri=model_uri)
     np.testing.assert_array_almost_equal(
         pd_model.model(pd_model.inference_dataframe),
@@ -283,8 +282,7 @@ class UCIHousing(paddle.nn.Layer):
         self.fc_ = paddle.nn.Linear(13, 1, None)
 
     def forward(self, inputs):  # pylint: disable=arguments-differ
-        pred = self.fc_(inputs)
-        return pred
+        return self.fc_(inputs)
 
 
 @pytest.fixture
@@ -336,7 +334,7 @@ def test_model_built_in_high_level_api_load_from_remote_uri_succeeds(
     artifact_repo = S3ArtifactRepository(artifact_root)
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     reloaded_model = mlflow.paddle.load_model(model_uri=model_uri)
 
     low_level_test_dataset = [x[0] for x in test_dataset]
@@ -412,12 +410,7 @@ def test_model_retrain_built_in_high_level_api(
 
     error_model = 0
     error_model_type = type(error_model)
-    with pytest.raises(
-        TypeError,
-        match="Invalid object type `{}` for `model`, must be `paddle.Model`".format(
-            error_model_type
-        ),
-    ):
+    with pytest.raises(TypeError, match=f"Invalid object type `{error_model_type}` for `model`, must be `paddle.Model`"):
         mlflow.paddle.load_model(model_uri=model_retrain_path, model=error_model)
 
     reloaded_pd_model = mlflow.paddle.load_model(model_uri=model_retrain_path)

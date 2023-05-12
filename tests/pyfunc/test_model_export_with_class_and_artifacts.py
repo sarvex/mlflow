@@ -119,9 +119,9 @@ def _conda_env():
     # NB: We need mlflow as a dependency in the environment.
     return _mlflow_conda_env(
         additional_pip_deps=[
-            "cloudpickle=={}".format(cloudpickle.__version__),
-            "scikit-learn=={}".format(sklearn.__version__),
-        ],
+            f"cloudpickle=={cloudpickle.__version__}",
+            f"scikit-learn=={sklearn.__version__}",
+        ]
     )
 
 
@@ -332,7 +332,7 @@ def test_model_load_from_remote_uri_succeeds(
     pyfunc_artifact_path = "pyfunc_model"
     artifact_repo.log_artifacts(pyfunc_model_path, artifact_path=pyfunc_artifact_path)
 
-    model_uri = artifact_root + "/" + pyfunc_artifact_path
+    model_uri = f"{artifact_root}/{pyfunc_artifact_path}"
     loaded_pyfunc_model = mlflow.pyfunc.load_pyfunc(model_uri=model_uri)
     np.testing.assert_array_equal(
         loaded_pyfunc_model.predict(iris_data[0]),
@@ -358,7 +358,10 @@ def test_add_to_model_adds_specified_kwargs_to_mlmodel_configuration():
     )
 
     assert mlflow.pyfunc.FLAVOR_NAME in model_config.flavors
-    assert all([item in model_config.flavors[mlflow.pyfunc.FLAVOR_NAME] for item in custom_kwargs])
+    assert all(
+        item in model_config.flavors[mlflow.pyfunc.FLAVOR_NAME]
+        for item in custom_kwargs
+    )
 
 
 @pytest.mark.large
@@ -821,6 +824,8 @@ def test_save_model_correctly_resolves_directory_artifact_with_nested_contents(
     with open(nested_file_path, "w") as f:
         f.write(nested_file_text)
 
+
+
     class ArtifactValidationModel(mlflow.pyfunc.PythonModel):
         def predict(self, context, model_input):
             expected_file_path = os.path.join(
@@ -828,9 +833,9 @@ def test_save_model_correctly_resolves_directory_artifact_with_nested_contents(
             )
             if not os.path.exists(expected_file_path):
                 return False
-            else:
-                with open(expected_file_path, "r") as f:
-                    return f.read() == nested_file_text
+            with open(expected_file_path, "r") as f:
+                return f.read() == nested_file_text
+
 
     mlflow.pyfunc.save_model(
         path=model_path,
@@ -966,6 +971,7 @@ def test_repr_can_be_called_withtout_run_id_or_artifact_path():
 def test_load_model_with_differing_cloudpickle_version_at_micro_granularity_logs_warning(
     model_path,
 ):
+
     class TestModel(mlflow.pyfunc.PythonModel):
         def predict(self, context, model_input):
             return model_input
@@ -993,17 +999,17 @@ def test_load_model_with_differing_cloudpickle_version_at_micro_granularity_logs
         mlflow.pyfunc.load_pyfunc(model_uri=model_path)
 
     assert any(
-        [
-            "differs from the version of CloudPickle that is currently running" in log_message
-            and saver_cloudpickle_version in log_message
-            and loader_cloudpickle_version in log_message
-            for log_message in log_messages
-        ]
+        "differs from the version of CloudPickle that is currently running"
+        in log_message
+        and saver_cloudpickle_version in log_message
+        and loader_cloudpickle_version in log_message
+        for log_message in log_messages
     )
 
 
 @pytest.mark.large
 def test_load_model_with_missing_cloudpickle_version_logs_warning(model_path):
+
     class TestModel(mlflow.pyfunc.PythonModel):
         def predict(self, context, model_input):
             return model_input
@@ -1026,14 +1032,12 @@ def test_load_model_with_missing_cloudpickle_version_logs_warning(model_path):
         mlflow.pyfunc.load_pyfunc(model_uri=model_path)
 
     assert any(
-        [
-            (
-                "The version of CloudPickle used to save the model could not be found"
-                " in the MLmodel configuration"
-            )
-            in log_message
-            for log_message in log_messages
-        ]
+        (
+            "The version of CloudPickle used to save the model could not be found"
+            " in the MLmodel configuration"
+        )
+        in log_message
+        for log_message in log_messages
     )
 
 

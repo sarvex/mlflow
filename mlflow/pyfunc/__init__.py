@@ -381,35 +381,34 @@ def _enforce_mlflow_datatype(name, values: pandas.Series, t: DataType):
 
     if is_upcast:
         return values.astype(numpy_type, errors="raise")
-    else:
         # NB: conversion between incompatible types (e.g. floats -> ints or
         # double -> float) are not allowed. While supported by pandas and numpy,
         # these conversions alter the values significantly.
-        def all_ints(xs):
-            return all([pandas.isnull(x) or int(x) == x for x in xs])
+    def all_ints(xs):
+        return all(pandas.isnull(x) or int(x) == x for x in xs)
 
-        hint = ""
-        if (
-            values.dtype == np.float64
-            and numpy_type.kind in ("i", "u")
-            and values.hasnans
-            and all_ints(values)
-        ):
-            hint = (
-                " Hint: the type mismatch is likely caused by missing values. "
-                "Integer columns in python can not represent missing values and are therefore "
-                "encoded as floats. The best way to avoid this problem is to infer the model "
-                "schema based on a realistic data sample (training dataset) that includes missing "
-                "values. Alternatively, you can declare integer columns as doubles (float64) "
-                "whenever these columns may have missing values. See `Handling Integers With "
-                "Missing Values <https://www.mlflow.org/docs/latest/models.html#"
-                "handling-integers-with-missing-values>`_ for more details."
-            )
-
-        raise MlflowException(
-            "Incompatible input types for column {0}. "
-            "Can not safely convert {1} to {2}.{3}".format(name, values.dtype, numpy_type, hint)
+    hint = ""
+    if (
+        values.dtype == np.float64
+        and numpy_type.kind in ("i", "u")
+        and values.hasnans
+        and all_ints(values)
+    ):
+        hint = (
+            " Hint: the type mismatch is likely caused by missing values. "
+            "Integer columns in python can not represent missing values and are therefore "
+            "encoded as floats. The best way to avoid this problem is to infer the model "
+            "schema based on a realistic data sample (training dataset) that includes missing "
+            "values. Alternatively, you can declare integer columns as doubles (float64) "
+            "whenever these columns may have missing values. See `Handling Integers With "
+            "Missing Values <https://www.mlflow.org/docs/latest/models.html#"
+            "handling-integers-with-missing-values>`_ for more details."
         )
+
+    raise MlflowException(
+        "Incompatible input types for column {0}. "
+        "Can not safely convert {1} to {2}.{3}".format(name, values.dtype, numpy_type, hint)
+    )
 
 
 def _enforce_tensor_spec(values: np.ndarray, tensor_spec: TensorSpec):
@@ -459,9 +458,11 @@ def _enforce_tensor_schema(pfInput: PyFuncInput, input_schema: Schema):
     """Enforce the input tensor(s) conforms to the model's tensor-based signature."""
     if input_schema.has_input_names():
         if isinstance(pfInput, dict):
-            new_pfInput = dict()
+            new_pfInput = {}
             for col_name, tensor_spec in zip(input_schema.input_names(), input_schema.inputs):
-                if not isinstance(pfInput[col_name], np.ndarray):
+                if isinstance(pfInput[col_name], np.ndarray):
+                    new_pfInput[col_name] = _enforce_tensor_spec(pfInput[col_name], tensor_spec)
+                else:
                     raise MlflowException(
                         "This model contains a tensor-based model signature with input names,"
                         " which suggests a dictionary input mapping input name to a numpy"
@@ -469,30 +470,32 @@ def _enforce_tensor_schema(pfInput: PyFuncInput, input_schema: Schema):
                             type(pfInput[col_name])
                         )
                     )
-                new_pfInput[col_name] = _enforce_tensor_spec(pfInput[col_name], tensor_spec)
         elif isinstance(pfInput, pandas.DataFrame):
-            new_pfInput = dict()
-            for col_name, tensor_spec in zip(input_schema.input_names(), input_schema.inputs):
-                new_pfInput[col_name] = _enforce_tensor_spec(
-                    np.array(pfInput[col_name], dtype=tensor_spec.type), tensor_spec
+            new_pfInput = {
+                col_name: _enforce_tensor_spec(
+                    np.array(pfInput[col_name], dtype=tensor_spec.type),
+                    tensor_spec,
                 )
+                for col_name, tensor_spec in zip(
+                    input_schema.input_names(), input_schema.inputs
+                )
+            }
         else:
             raise MlflowException(
                 "This model contains a tensor-based model signature with input names, which"
                 " suggests a dictionary input mapping input name to tensor, but an input of"
                 " type {0} was found.".format(type(pfInput))
             )
+    elif isinstance(pfInput, pandas.DataFrame):
+        new_pfInput = _enforce_tensor_spec(pfInput.to_numpy(), input_schema.inputs[0])
+    elif isinstance(pfInput, np.ndarray):
+        new_pfInput = _enforce_tensor_spec(pfInput, input_schema.inputs[0])
     else:
-        if isinstance(pfInput, pandas.DataFrame):
-            new_pfInput = _enforce_tensor_spec(pfInput.to_numpy(), input_schema.inputs[0])
-        elif isinstance(pfInput, np.ndarray):
-            new_pfInput = _enforce_tensor_spec(pfInput, input_schema.inputs[0])
-        else:
-            raise MlflowException(
-                "This model contains a tensor-based model signature with no input names,"
-                " which suggests a numpy array input, but an input of type {0} was"
-                " found.".format(type(pfInput))
-            )
+        raise MlflowException(
+            "This model contains a tensor-based model signature with no input names,"
+            " which suggests a numpy array input, but an input of type {0} was"
+            " found.".format(type(pfInput))
+        )
     return new_pfInput
 
 
@@ -521,7 +524,7 @@ def _enforce_schema(pfInput: PyFuncInput, input_schema: Schema):
                 )
         if not isinstance(pfInput, pandas.DataFrame):
             raise MlflowException(
-                "Expected input to be DataFrame or list. Found: %s" % type(pfInput).__name__
+                f"Expected input to be DataFrame or list. Found: {type(pfInput).__name__}"
             )
 
     if input_schema.has_input_names():
@@ -812,7 +815,7 @@ def spark_udf(spark, model_uri, result_type="double"):
 
     supported_types = [IntegerType, LongType, FloatType, DoubleType, StringType]
 
-    if not any([isinstance(elem_type, x) for x in supported_types]):
+    if not any(isinstance(elem_type, x) for x in supported_types):
         raise MlflowException(
             message="Invalid result_type '{}'. Result type can only be one of or an array of one "
             "of the following types: {}".format(str(elem_type), str(supported_types)),
@@ -897,30 +900,30 @@ def spark_udf(spark, model_uri, result_type="double"):
 
     @functools.wraps(udf)
     def udf_with_default_cols(*args):
-        if len(args) == 0:
-            input_schema = model_metadata.get_input_schema()
-
-            if input_schema and len(input_schema.inputs) > 0:
-                if input_schema.has_input_names():
-                    input_names = input_schema.input_names()
-                    return udf(*input_names)
-                else:
-                    raise MlflowException(
-                        message="Cannot apply udf because no column names specified. The udf "
-                        "expects {} columns with types: {}. Input column names could not be "
-                        "inferred from the model signature (column names not found).".format(
-                            len(input_schema.inputs), input_schema.inputs,
-                        ),
-                        error_code=INVALID_PARAMETER_VALUE,
-                    )
-            else:
-                _logger.warning(
-                    "Attempting to apply udf on zero columns because no column names were "
-                    "specified as arguments or inferred from the model signature."
-                )
-                return udf()  # pylint: disable=no-value-for-parameter
-        else:
+        if args:
             return udf(*args)
+
+        input_schema = model_metadata.get_input_schema()
+
+        if input_schema and len(input_schema.inputs) > 0:
+            if input_schema.has_input_names():
+                input_names = input_schema.input_names()
+                return udf(*input_names)
+            else:
+                raise MlflowException(
+                    message="Cannot apply udf because no column names specified. The udf "
+                    "expects {} columns with types: {}. Input column names could not be "
+                    "inferred from the model signature (column names not found).".format(
+                        len(input_schema.inputs), input_schema.inputs,
+                    ),
+                    error_code=INVALID_PARAMETER_VALUE,
+                )
+        else:
+            _logger.warning(
+                "Attempting to apply udf on zero columns because no column names were "
+                "specified as arguments or inferred from the model signature."
+            )
+            return udf()  # pylint: disable=no-value-for-parameter
 
     return udf_with_default_cols
 
@@ -1028,11 +1031,10 @@ def save_model(
     _validate_env_arguments(conda_env, pip_requirements, extra_pip_requirements)
 
     mlflow_model = kwargs.pop("model", mlflow_model)
-    if len(kwargs) > 0:
-        raise TypeError("save_model() got unexpected keyword arguments: {}".format(kwargs))
-    if code_path is not None:
-        if not isinstance(code_path, list):
-            raise TypeError("Argument code_path should be a list, not {}".format(type(code_path)))
+    if kwargs:
+        raise TypeError(f"save_model() got unexpected keyword arguments: {kwargs}")
+    if code_path is not None and not isinstance(code_path, list):
+        raise TypeError(f"Argument code_path should be a list, not {type(code_path)}")
 
     first_argument_set = {
         "loader_module": loader_module,
@@ -1042,8 +1044,12 @@ def save_model(
         "artifacts": artifacts,
         "python_model": python_model,
     }
-    first_argument_set_specified = any([item is not None for item in first_argument_set.values()])
-    second_argument_set_specified = any([item is not None for item in second_argument_set.values()])
+    first_argument_set_specified = any(
+        item is not None for item in first_argument_set.values()
+    )
+    second_argument_set_specified = any(
+        item is not None for item in second_argument_set.values()
+    )
     if first_argument_set_specified and second_argument_set_specified:
         raise MlflowException(
             message=(
@@ -1067,7 +1073,8 @@ def save_model(
 
     if os.path.exists(path):
         raise MlflowException(
-            message="Path '{}' already exists".format(path), error_code=RESOURCE_ALREADY_EXISTS
+            message=f"Path '{path}' already exists",
+            error_code=RESOURCE_ALREADY_EXISTS,
         )
     os.makedirs(path)
     if mlflow_model is None:

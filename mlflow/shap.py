@@ -91,7 +91,7 @@ def get_default_pip_requirements():
     """
     import shap
 
-    return ["shap=={}".format(shap.__version__)]
+    return [f"shap=={shap.__version__}"]
 
 
 def get_default_conda_env():
@@ -409,7 +409,8 @@ def save_explainer(
 
     if os.path.exists(path):
         raise MlflowException(
-            message="Path '{}' already exists".format(path), error_code=RESOURCE_ALREADY_EXISTS,
+            message=f"Path '{path}' already exists",
+            error_code=RESOURCE_ALREADY_EXISTS,
         )
 
     os.makedirs(path)
@@ -516,12 +517,13 @@ def _get_conda_and_pip_dependencies(conda_env):
 
     for dependency in conda_env["dependencies"]:
         if isinstance(dependency, dict) and dependency["pip"]:
-            for pip_dependency in dependency["pip"]:
-                if pip_dependency != "mlflow":
-                    pip_deps.append(pip_dependency)
-        else:
-            if dependency.split("=")[0] != "python" and dependency.split("=")[0] != "pip":
-                conda_deps.append(dependency)
+            pip_deps.extend(
+                pip_dependency
+                for pip_dependency in dependency["pip"]
+                if pip_dependency != "mlflow"
+            )
+        elif dependency.split("=")[0] not in ["python", "pip"]:
+            conda_deps.append(dependency)
 
     return conda_deps, pip_deps
 

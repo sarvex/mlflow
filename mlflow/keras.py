@@ -434,15 +434,14 @@ def _load_model(model_path, keras_module, save_format, **kwargs):
     # keras in tensorflow used to have a '-tf' suffix in the version:
     # https://github.com/tensorflow/tensorflow/blob/v2.2.1/tensorflow/python/keras/__init__.py#L36
     unsuffixed_version = re.sub(r"-tf$", "", keras_module.__version__)
-    if save_format == "h5" and Version(unsuffixed_version) >= Version("2.2.3"):
-        # NOTE: Keras 2.2.3 does not work with unicode paths in python2. Pass in h5py.File instead
-        # of string to avoid issues.
-        import h5py
-
-        with h5py.File(os.path.abspath(model_path), "r") as model_path:
-            return keras_models.load_model(model_path, custom_objects=custom_objects, **kwargs)
-    else:
+    if save_format != "h5" or Version(unsuffixed_version) < Version("2.2.3"):
         # NOTE: Older versions of Keras only handle filepath.
+        return keras_models.load_model(model_path, custom_objects=custom_objects, **kwargs)
+    # NOTE: Keras 2.2.3 does not work with unicode paths in python2. Pass in h5py.File instead
+    # of string to avoid issues.
+    import h5py
+
+    with h5py.File(os.path.abspath(model_path), "r") as model_path:
         return keras_models.load_model(model_path, custom_objects=custom_objects, **kwargs)
 
 
@@ -504,7 +503,7 @@ def _load_pyfunc(path):
         return _KerasModelWrapper(m, None, None)
 
     else:
-        raise MlflowException("Unsupported backend '%s'" % K._BACKEND)
+        raise MlflowException(f"Unsupported backend '{K._BACKEND}'")
 
 
 def load_model(model_uri, dst_path=None, **kwargs):

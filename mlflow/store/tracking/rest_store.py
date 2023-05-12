@@ -290,11 +290,14 @@ class RestStore(AbstractStore):
                 databricks_pb2.REQUEST_LIMIT_EXCEEDED
             ):
                 raise e
-            # Fall back to using ListExperiments-based implementation.
-            for experiment in self.list_experiments(ViewType.ALL):
-                if experiment.name == experiment_name:
-                    return experiment
-            return None
+            return next(
+                (
+                    experiment
+                    for experiment in self.list_experiments(ViewType.ALL)
+                    if experiment.name == experiment_name
+                ),
+                None,
+            )
 
     def log_batch(self, run_id, metrics, params, tags):
         metric_protos = [metric.to_proto() for metric in metrics]

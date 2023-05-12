@@ -147,16 +147,12 @@ def _execute_in_conda_env(conda_env_path, command, install_mlflow, command_env=N
     activate_conda_env = get_conda_command(conda_env_name)
     if install_mlflow:
         if "MLFLOW_HOME" in os.environ:  # dev version
-            install_mlflow = "pip install -e {} 1>&2".format(os.environ["MLFLOW_HOME"])
+            install_mlflow = f'pip install -e {os.environ["MLFLOW_HOME"]} 1>&2'
         else:
-            install_mlflow = "pip install mlflow=={} 1>&2".format(VERSION)
+            install_mlflow = f"pip install mlflow=={VERSION} 1>&2"
 
         activate_conda_env += [install_mlflow]
-    if os.name != "nt":
-        separator = " && "
-    else:
-        separator = " & "
-
+    separator = " && " if os.name != "nt" else " & "
     command = separator.join(activate_conda_env + [command])
     _logger.info("=== Running command '%s'", command)
 

@@ -10,7 +10,6 @@ def parse_target_uri(target_uri):
             # uri = 'target_name' (without :/<path>)
             return parsed.path
         raise MlflowException(
-            "Not a proper deployment URI: %s. " % target_uri
-            + "Deployment URIs must be of the form 'target' or 'target:/suffix'"
+            f"Not a proper deployment URI: {target_uri}. Deployment URIs must be of the form 'target' or 'target:/suffix'"
         )
     return parsed.scheme

@@ -122,7 +122,7 @@ def test_model_load_from_remote_uri_succeeds(fastai_model, model_path, mock_s3_b
     artifact_repo = S3ArtifactRepository(artifact_root)
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     reloaded_model = mlflow.fastai.load_model(model_uri=model_uri)
 
     model_wrapper = mlflow.fastai._FastaiModelWrapper(model)

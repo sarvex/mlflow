@@ -34,7 +34,7 @@ if __name__ == "__main__":
     mlflow.log_params(params)
 
     nlp.begin_training()
-    for itn in range(params["n_iter"]):
+    for _ in range(params["n_iter"]):
         random.shuffle(TRAIN_DATA)
         losses = {}
         # batch up the examples using spaCy's minibatch
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         run_id=mlflow.active_run().info.run_id, artifact_path="model"
     )
 
-    print("Model saved in run %s" % mlflow.active_run().info.run_uuid)
+    print(f"Model saved in run {mlflow.active_run().info.run_uuid}")
 
     # Load the model using mlflow and use it to predict data
     nlp2 = mlflow.spacy.load_model(model_uri=model_uri)

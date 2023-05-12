@@ -177,7 +177,7 @@ class NumpyEncoder(JSONEncoder):
 
         if isinstance(o, np.generic):
             return o.item(), True
-        if isinstance(o, bytes) or isinstance(o, bytearray):
+        if isinstance(o, (bytes, bytearray)):
             return encode_binary(o), True
         if isinstance(o, np.datetime64):
             return np.datetime_as_string(o), True
@@ -187,10 +187,7 @@ class NumpyEncoder(JSONEncoder):
 
     def default(self, o):  # pylint: disable=E0202
         res, converted = self.try_convert(o)
-        if converted:
-            return res
-        else:
-            return super().default(o)
+        return res if converted else super().default(o)
 
 
 def _dataframe_from_json(
@@ -209,35 +206,35 @@ def _dataframe_from_json(
 
     from mlflow.types import DataType
 
-    if schema is not None:
-        if schema.is_tensor_spec():
-            # The schema can be either:
-            #  - a single tensor: attempt to parse all columns with the same dtype
-            #  - a dictionary of tensors: each column gets the type from an equally named tensor
-            if len(schema.inputs) == 1:
-                dtypes = schema.numpy_types()[0]
-            else:
-                dtypes = dict(zip(schema.input_names(), schema.numpy_types()))
-        else:
-            dtypes = dict(zip(schema.input_names(), schema.pandas_types()))
-
-        df = pd.read_json(
-            path_or_str,
-            orient=pandas_orient,
-            dtype=dtypes,
-            precise_float=precise_float,
-            convert_dates=False,
-        )
-        if not schema.is_tensor_spec():
-            actual_cols = set(df.columns)
-            for type_, name in zip(schema.input_types(), schema.input_names()):
-                if type_ == DataType.binary and name in actual_cols:
-                    df[name] = df[name].map(lambda x: base64.decodebytes(bytes(x, "utf8")))
-        return df
-    else:
+    if schema is None:
         return pd.read_json(
             path_or_str, orient=pandas_orient, dtype=False, precise_float=precise_float
         )
+    if schema.is_tensor_spec():
+            # The schema can be either:
+            #  - a single tensor: attempt to parse all columns with the same dtype
+            #  - a dictionary of tensors: each column gets the type from an equally named tensor
+        dtypes = (
+            schema.numpy_types()[0]
+            if len(schema.inputs) == 1
+            else dict(zip(schema.input_names(), schema.numpy_types()))
+        )
+    else:
+        dtypes = dict(zip(schema.input_names(), schema.pandas_types()))
+
+    df = pd.read_json(
+        path_or_str,
+        orient=pandas_orient,
+        dtype=dtypes,
+        precise_float=precise_float,
+        convert_dates=False,
+    )
+    if not schema.is_tensor_spec():
+        actual_cols = set(df.columns)
+        for type_, name in zip(schema.input_types(), schema.input_names()):
+            if type_ == DataType.binary and name in actual_cols:
+                df[name] = df[name].map(lambda x: base64.decodebytes(bytes(x, "utf8")))
+    return df
 
 
 def _get_jsonable_obj(data, pandas_orient="records"):
@@ -313,7 +310,7 @@ def parse_tf_serving_input(inp_dict, schema=None):
             " not supported."
         )
 
-    if not (list(inp_dict.keys()) == ["instances"] or list(inp_dict.keys()) == ["inputs"]):
+    if list(inp_dict.keys()) not in [["instances"], ["inputs"]]:
         raise MlflowException(
             'Failed to parse data as TF serving input. One of "instances" and'
             ' "inputs" must be specified (not both or any other keys).'
@@ -348,7 +345,7 @@ def parse_tf_serving_input(inp_dict, schema=None):
     if isinstance(data, dict):
         # ensure all columns have the same number of items
         expected_len = len(list(data.values())[0])
-        if not all(len(v) == expected_len for v in data.values()):
+        if any(len(v) != expected_len for v in data.values()):
             raise MlflowException(
                 "Failed to parse data as TF serving input. The length of values for"
                 " each input/column name are not the same"

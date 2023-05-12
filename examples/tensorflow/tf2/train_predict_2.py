@@ -45,12 +45,7 @@ def train_input_fn(features, labels, batch_size):
 def eval_input_fn(features, labels, batch_size):
     """An input function for evaluation or prediction"""
     features = dict(features)
-    if labels is None:
-        # No labels, use only features.
-        inputs = features
-    else:
-        inputs = (features, labels)
-
+    inputs = features if labels is None else (features, labels)
     # Convert the inputs to a Dataset.
     dataset = tf.data.Dataset.from_tensor_slices(inputs)
 
@@ -77,11 +72,9 @@ def main(argv):
         # Fetch the data
         (train_x, train_y), (test_x, test_y) = load_data()
 
-        # Feature columns describe how to use the input.
-        my_feature_columns = []
-        for key in train_x.keys():
-            my_feature_columns.append(tf.feature_column.numeric_column(key=key))
-
+        my_feature_columns = [
+            tf.feature_column.numeric_column(key=key) for key in train_x.keys()
+        ]
         # Two hidden layers of 10 nodes each.
         hidden_units = [10, 10]
 

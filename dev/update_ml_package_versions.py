@@ -86,7 +86,7 @@ def update_max_version(src, key, new_max_version, category):
     #   <category>:
     #     ...
     #     maximum: "1.2.3"
-    return re.sub(pattern, r'\g<1>"{}"'.format(new_max_version), src, flags=re.DOTALL)
+    return re.sub(pattern, f'\g<1>"{new_max_version}"', src, flags=re.DOTALL)
 
 
 def parse_args(args):

@@ -58,11 +58,7 @@ class SFTPArtifactRepository(ArtifactRepository):
                 self.config["username"] = user_config["user"]
 
             if self.config.get("port", None) is None:
-                if "port" in user_config:
-                    self.config["port"] = int(user_config["port"])
-                else:
-                    self.config["port"] = 22
-
+                self.config["port"] = int(user_config["port"]) if "port" in user_config else 22
             if "identityfile" in user_config:
                 self.config["private_key"] = user_config["identityfile"][0]
 

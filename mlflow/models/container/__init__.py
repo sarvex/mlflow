@@ -64,12 +64,9 @@ def _serve():
     model_config_path = os.path.join(MODEL_PATH, MLMODEL_FILE_NAME)
     m = Model.load(model_config_path)
 
-    if DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME in os.environ:
-        serving_flavor = os.environ[DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME]
-    else:
-        # Older versions of mlflow may not specify a deployment configuration
-        serving_flavor = pyfunc.FLAVOR_NAME
-
+    serving_flavor = os.environ.get(
+        DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME, pyfunc.FLAVOR_NAME
+    )
     if serving_flavor == mleap.FLAVOR_NAME:
         _serve_mleap()
     elif pyfunc.FLAVOR_NAME in m.flavors:
@@ -101,7 +98,7 @@ def _install_pyfunc_deps(model_path=None, install_mlflow=False, enable_mlserver=
             if not os.path.exists(env_path_dst_dir):
                 os.makedirs(env_path_dst_dir)
             shutil.copyfile(os.path.join(MODEL_PATH, env), env_path_dst)
-            conda_create_model_env = "conda env create -n custom_env -f {}".format(env_path_dst)
+            conda_create_model_env = f"conda env create -n custom_env -f {env_path_dst}"
             if Popen(["bash", "-c", conda_create_model_env]).wait() != 0:
                 raise Exception("Failed to create model environment.")
             has_env = True
@@ -120,7 +117,7 @@ def _install_pyfunc_deps(model_path=None, install_mlflow=False, enable_mlserver=
         install_mlflow_cmd = [
             "pip install /opt/mlflow/."
             if _container_includes_mlflow_source()
-            else "pip install mlflow=={}".format(MLFLOW_VERSION)
+            else f"pip install mlflow=={MLFLOW_VERSION}"
         ]
         if Popen(["bash", "-c", " && ".join(activate_cmd + install_mlflow_cmd)]).wait() != 0:
             raise Exception("Failed to install mlflow into the model environment.")
@@ -130,22 +127,18 @@ def _serve_pyfunc(model):
     # option to disable manually nginx. The default behavior is to enable nginx.
     disable_nginx = os.getenv(DISABLE_NGINX, "false").lower() == "true"
     enable_mlserver = os.getenv(ENABLE_MLSERVER, "false").lower() == "true"
-    disable_env_creation = os.environ.get(DISABLE_ENV_CREATION) == "true"
-
     conf = model.flavors[pyfunc.FLAVOR_NAME]
     bash_cmds = []
     if pyfunc.ENV in conf:
+        disable_env_creation = os.environ.get(DISABLE_ENV_CREATION) == "true"
+
         if not disable_env_creation:
             _install_pyfunc_deps(MODEL_PATH, install_mlflow=True, enable_mlserver=enable_mlserver)
         bash_cmds += ["source /miniconda/bin/activate custom_env"]
 
     procs = []
 
-    start_nginx = True
-    if disable_nginx or enable_mlserver:
-        start_nginx = False
-
-    if start_nginx:
+    if start_nginx := not disable_nginx and not enable_mlserver:
         nginx_conf = resource_filename(
             mlflow.models.__name__, "container/scoring_server/nginx.conf"
         )

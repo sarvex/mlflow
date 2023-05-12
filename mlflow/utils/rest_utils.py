@@ -16,7 +16,7 @@ from mlflow.exceptions import MlflowException, RestException
 
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 _REST_API_PATH_PREFIX = "/api/2.0"
-_DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
+_DEFAULT_HEADERS = {"User-Agent": f"mlflow-python-client/{__version__}"}
 # Response codes that generally indicate transient network failures and merit client retries,
 # based on guidance from cloud service providers
 # (https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#general-rest-and-retry-guidelines)
@@ -71,8 +71,7 @@ def _get_http_response_with_retries(
     with requests.Session() as http:
         http.mount("https://", adapter)
         http.mount("http://", adapter)
-        response = http.request(method, url, **kwargs)
-        return response
+        return http.request(method, url, **kwargs)
 
 
 def http_request(
@@ -109,10 +108,10 @@ def http_request(
     hostname = host_creds.host
     auth_str = None
     if host_creds.username and host_creds.password:
-        basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode("utf-8")
+        basic_auth_str = f"{host_creds.username}:{host_creds.password}".encode("utf-8")
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
-        auth_str = "Bearer %s" % host_creds.token
+        auth_str = f"Bearer {host_creds.token}"
 
     from mlflow.tracking.request_header.registry import resolve_request_headers
 
@@ -129,7 +128,7 @@ def http_request(
         kwargs["cert"] = host_creds.client_cert_path
 
     cleaned_hostname = strip_suffix(hostname, "/")
-    url = "%s%s" % (cleaned_hostname, endpoint)
+    url = f"{cleaned_hostname}{endpoint}"
     try:
         return _get_http_response_with_retries(
             method,
@@ -143,7 +142,7 @@ def http_request(
             **kwargs
         )
     except Exception as e:
-        raise MlflowException("API request to %s failed with exception %s" % (url, e))
+        raise MlflowException(f"API request to {url} failed with exception {e}")
 
 
 def _can_parse_as_json(string):
@@ -167,12 +166,8 @@ def verify_rest_response(response, endpoint):
     if response.status_code != 200:
         if _can_parse_as_json(response.text):
             raise RestException(json.loads(response.text))
-        else:
-            base_msg = "API request to endpoint %s failed with error code " "%s != 200" % (
-                endpoint,
-                response.status_code,
-            )
-            raise MlflowException("%s. Response body: '%s'" % (base_msg, response.text))
+        base_msg = f"API request to endpoint {endpoint} failed with error code {response.status_code} != 200"
+        raise MlflowException(f"{base_msg}. Response body: '{response.text}'")
 
     # Skip validation for endpoints (e.g. DBFS file-download API) which may return a non-JSON
     # response
@@ -181,13 +176,13 @@ def verify_rest_response(response, endpoint):
             "API request to endpoint was successful but the response body was not "
             "in a valid JSON format"
         )
-        raise MlflowException("%s. Response body: '%s'" % (base_msg, response.text))
+        raise MlflowException(f"{base_msg}. Response body: '{response.text}'")
 
     return response
 
 
 def _get_path(path_prefix, endpoint_path):
-    return "{}{}".format(path_prefix, endpoint_path)
+    return f"{path_prefix}{endpoint_path}"
 
 
 def extract_api_info_for_service(service, path_prefix):
@@ -270,14 +265,14 @@ def cloud_storage_http_request(
     :return requests.Response object.
     """
     if method.lower() not in ("put", "get"):
-        raise ValueError("Illegal http method: " + method)
+        raise ValueError(f"Illegal http method: {method}")
     try:
         with _get_http_response_with_retries(
             method, url, max_retries, backoff_factor, retry_codes, timeout=timeout, **kwargs
         ) as response:
             yield response
     except Exception as e:
-        raise MlflowException("API request failed with exception %s" % e)
+        raise MlflowException(f"API request failed with exception {e}")
 
 
 class MlflowHostCreds(object):

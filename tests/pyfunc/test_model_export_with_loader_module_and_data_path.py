@@ -360,13 +360,13 @@ def test_tensor_multi_named_schema_enforcement():
     }
 
     # test that missing column raises
-    inp1 = {k: v for k, v in inp.items()}
+    inp1 = dict(inp)
     with pytest.raises(MlflowException) as ex:
         pyfunc_model.predict(inp1.pop("b"))
     assert "Model is missing inputs" in str(ex)
 
     # test that extra column is ignored
-    inp2 = {k: v for k, v in inp.items()}
+    inp2 = dict(inp)
     inp2["x"] = 1
 
     # test that extra column is removed
@@ -389,7 +389,7 @@ def test_tensor_multi_named_schema_enforcement():
     assert expected_types == actual_types
 
     # test that type casting is not supported
-    inp4 = {k: v for k, v in inp.items()}
+    inp4 = dict(inp)
     inp4["a"] = inp4["a"].astype(np.int32)
     with pytest.raises(MlflowException) as ex:
         pyfunc_model.predict(inp4)
@@ -416,7 +416,7 @@ def test_tensor_multi_named_schema_enforcement():
     assert "Model is missing inputs ['a', 'b', 'c']." in str(ex)
 
     # test empty ndarray does not work
-    inp7 = {k: v for k, v in inp.items()}
+    inp7 = dict(inp)
     inp7["a"] = np.array([])
     with pytest.raises(MlflowException) as ex:
         pyfunc_model.predict(inp7)
@@ -556,7 +556,7 @@ def test_column_schema_enforcement_no_col_names():
 
     # Can only provide data type that can be converted to dataframe...
     with pytest.raises(MlflowException) as ex:
-        pyfunc_model.predict(set([1, 2, 3]))
+        pyfunc_model.predict({1, 2, 3})
     assert "Expected input to be DataFrame or list. Found: set" in str(ex)
 
     # 9. dictionaries of str -> list/nparray work

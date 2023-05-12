@@ -109,7 +109,7 @@ class SqlAlchemyStore(AbstractStore):
             SqlRegisteredModel.__tablename__,
             SqlModelVersion.__tablename__,
         ]
-        if any([table not in inspected_tables for table in expected_tables]):
+        if any(table not in inspected_tables for table in expected_tables):
             # TODO: Replace the MlflowException with the following line once it's possible to run
             # the registry against a different DB than the tracking server:
             # mlflow.store.db.utils._initialize_tables(self.engine)
@@ -174,9 +174,7 @@ class SqlAlchemyStore(AbstractStore):
                     last_updated_time=creation_time,
                     description=description,
                 )
-                tags_dict = {}
-                for tag in tags or []:
-                    tags_dict[tag.key] = tag.value
+                tags_dict = {tag.key: tag.value for tag in tags or []}
                 registered_model.registered_model_tags = [
                     SqlRegisteredModelTag(key=key, value=value) for key, value in tags_dict.items()
                 ]
@@ -185,7 +183,7 @@ class SqlAlchemyStore(AbstractStore):
                 return registered_model.to_mlflow_entity()
             except sqlalchemy.exc.IntegrityError as e:
                 raise MlflowException(
-                    "Registered Model (name={}) already exists. " "Error: {}".format(name, str(e)),
+                    f"Registered Model (name={name}) already exists. Error: {str(e)}",
                     RESOURCE_ALREADY_EXISTS,
                 )
 
@@ -208,12 +206,12 @@ class SqlAlchemyStore(AbstractStore):
 
         if len(rms) == 0:
             raise MlflowException(
-                "Registered Model with name={} not found".format(name), RESOURCE_DOES_NOT_EXIST
+                f"Registered Model with name={name} not found",
+                RESOURCE_DOES_NOT_EXIST,
             )
         if len(rms) > 1:
             raise MlflowException(
-                "Expected only 1 registered model with name={}. "
-                "Found {}.".format(name, len(rms)),
+                f"Expected only 1 registered model with name={name}. Found {len(rms)}.",
                 INVALID_STATE,
             )
         return rms[0]
@@ -260,8 +258,7 @@ class SqlAlchemyStore(AbstractStore):
                 return sql_registered_model.to_mlflow_entity()
             except sqlalchemy.exc.IntegrityError as e:
                 raise MlflowException(
-                    "Registered Model (name={}) already exists. "
-                    "Error: {}".format(new_name, str(e)),
+                    f"Registered Model (name={new_name}) already exists. Error: {str(e)}",
                     RESOURCE_ALREADY_EXISTS,
                 )
 
@@ -354,7 +351,10 @@ class SqlAlchemyStore(AbstractStore):
                 conditions = [SqlRegisteredModel.name == filter_dict["value"]]
         else:
             supported_ops = "".join(
-                ["(" + op + ")" for op in SearchUtils.VALID_REGISTERED_MODEL_SEARCH_COMPARATORS]
+                [
+                    f"({op})"
+                    for op in SearchUtils.VALID_REGISTERED_MODEL_SEARCH_COMPARATORS
+                ]
             )
             sample_query = 'name {} "<model_name>"'.format(supported_ops)
             raise MlflowException(
@@ -396,15 +396,14 @@ class SqlAlchemyStore(AbstractStore):
                     field = SqlRegisteredModel.last_updated_time
                 else:
                     raise MlflowException(
-                        "Invalid order by key '{}' specified.".format(attribute_token)
-                        + "Valid keys are "
-                        + "'{}'".format(SearchUtils.RECOMMENDED_ORDER_BY_KEYS_REGISTERED_MODELS),
+                        (
+                            f"Invalid order by key '{attribute_token}' specified.Valid keys are "
+                            + f"'{SearchUtils.RECOMMENDED_ORDER_BY_KEYS_REGISTERED_MODELS}'"
+                        ),
                         error_code=INVALID_PARAMETER_VALUE,
                     )
                 if field.key in observed_order_by_clauses:
-                    raise MlflowException(
-                        "`order_by` contains duplicate fields: {}".format(order_by_list)
-                    )
+                    raise MlflowException(f"`order_by` contains duplicate fields: {order_by_list}")
                 observed_order_by_clauses.add(field.key)
                 if ascending:
                     clauses.append(field.asc())
@@ -440,11 +439,12 @@ class SqlAlchemyStore(AbstractStore):
             # Convert to RegisteredModel entity first and then extract latest_versions
             latest_versions = sql_registered_model.to_mlflow_entity().latest_versions
             if stages is None or len(stages) == 0:
-                expected_stages = set(
-                    [get_canonical_stage(stage) for stage in DEFAULT_STAGES_FOR_GET_LATEST_VERSIONS]
-                )
+                expected_stages = {
+                    get_canonical_stage(stage)
+                    for stage in DEFAULT_STAGES_FOR_GET_LATEST_VERSIONS
+                }
             else:
-                expected_stages = set([get_canonical_stage(stage) for stage in stages])
+                expected_stages = {get_canonical_stage(stage) for stage in stages}
             return [mv for mv in latest_versions if mv.current_stage in expected_stages]
 
     @classmethod
@@ -458,8 +458,7 @@ class SqlAlchemyStore(AbstractStore):
             return None
         if len(tags) > 1:
             raise MlflowException(
-                "Expected only 1 registered model tag with name={}, key={}. "
-                "Found {}.".format(name, key, len(tags)),
+                f"Expected only 1 registered model tag with name={name}, key={key}. Found {len(tags)}.",
                 INVALID_STATE,
             )
         return tags[0]
@@ -517,7 +516,7 @@ class SqlAlchemyStore(AbstractStore):
 
         def next_version(sql_registered_model):
             if sql_registered_model.model_versions:
-                return max([mv.version for mv in sql_registered_model.model_versions]) + 1
+                return max(mv.version for mv in sql_registered_model.model_versions) + 1
             else:
                 return 1
 
@@ -571,13 +570,12 @@ class SqlAlchemyStore(AbstractStore):
 
         if len(versions) == 0:
             raise MlflowException(
-                "Model Version (name={}, version={}) " "not found".format(name, version),
+                f"Model Version (name={name}, version={version}) not found",
                 RESOURCE_DOES_NOT_EXIST,
             )
         if len(versions) > 1:
             raise MlflowException(
-                "Expected only 1 model version with (name={}, version={}). "
-                "Found {}.".format(name, version, len(versions)),
+                f"Expected only 1 model version with (name={name}, version={version}). Found {len(versions)}.",
                 INVALID_STATE,
             )
         return versions[0]
@@ -762,7 +760,8 @@ class SqlAlchemyStore(AbstractStore):
                     conditions = [SqlModelVersion.run_id == filter_dict["value"]]
             else:
                 raise MlflowException(
-                    "Invalid filter string: %s" % filter_string, error_code=INVALID_PARAMETER_VALUE
+                    f"Invalid filter string: {filter_string}",
+                    error_code=INVALID_PARAMETER_VALUE,
                 )
         else:
             raise MlflowException(
@@ -795,8 +794,7 @@ class SqlAlchemyStore(AbstractStore):
             return None
         if len(tags) > 1:
             raise MlflowException(
-                "Expected only 1 model version tag with name={}, version={}, "
-                "key={}. Found {}.".format(name, version, key, len(tags)),
+                f"Expected only 1 model version tag with name={name}, version={version}, key={key}. Found {len(tags)}.",
                 INVALID_STATE,
             )
         return tags[0]

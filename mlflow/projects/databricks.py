@@ -118,7 +118,7 @@ class DatabricksJobRunner(object):
             host_creds=host_creds,
             endpoint="/api/2.0/dbfs/get-status",
             method="GET",
-            json={"path": "/%s" % dbfs_path},
+            json={"path": f"/{dbfs_path}"},
         )
         try:
             json_response_obj = json.loads(response.text)
@@ -168,7 +168,7 @@ class DatabricksJobRunner(object):
                 DBFS_EXPERIMENT_DIR_BASE,
                 str(experiment_id),
                 "projects-code",
-                "%s.tar.gz" % tarfile_hash,
+                f"{tarfile_hash}.tar.gz",
             )
             tar_size = file_utils._get_local_file_size(temp_tar_filename)
             dbfs_fuse_uri = posixpath.join("/dbfs", dbfs_path)
@@ -203,7 +203,7 @@ class DatabricksJobRunner(object):
                  `Runs Get <https://docs.databricks.com/api/latest/jobs.html#runs-get>`_ API.
         """
         if is_release_version():
-            libraries = [{"pypi": {"package": "mlflow==%s" % VERSION}}]
+            libraries = [{"pypi": {"package": f"mlflow=={VERSION}"}}]
         else:
             # When running a non-release version as the client the same version will not be
             # available within Databricks.
@@ -215,7 +215,7 @@ class DatabricksJobRunner(object):
                     "This might lead to unforeseen issues. "
                 )
             )
-            libraries = [{"pypi": {"package": "'mlflow<=%s'" % VERSION}}]
+            libraries = [{"pypi": {"package": f"'mlflow<={VERSION}'"}}]
 
         # Check syntax of JSON - if it contains libraries and new_cluster, pull those out
         if "new_cluster" in cluster_spec:
@@ -226,15 +226,14 @@ class DatabricksJobRunner(object):
 
         # Make jobs API request to launch run.
         req_body_json = {
-            "run_name": "MLflow Run for %s" % project_uri,
+            "run_name": f"MLflow Run for {project_uri}",
             "new_cluster": cluster_spec,
             "shell_command_task": {"command": command, "env_vars": env_vars},
             "libraries": libraries,
         }
         _logger.info("=== Submitting a run to execute the MLflow project... ===")
         run_submit_res = self._jobs_runs_submit(req_body_json)
-        databricks_run_id = run_submit_res["run_id"]
-        return databricks_run_id
+        return run_submit_res["run_id"]
 
     def run_databricks(
         self, uri, entry_point, work_dir, parameters, experiment_id, cluster_spec, run_id
@@ -254,9 +253,7 @@ class DatabricksJobRunner(object):
         run_state = self.get_run_result_state(databricks_run_id)
         if run_state is None:
             return RunStatus.RUNNING
-        if run_state == "SUCCESS":
-            return RunStatus.FINISHED
-        return RunStatus.FAILED
+        return RunStatus.FINISHED if run_state == "SUCCESS" else RunStatus.FAILED
 
     def get_status(self, databricks_run_id):
         return RunStatus.to_string(self._get_status(databricks_run_id))
@@ -288,9 +285,7 @@ class DatabricksJobRunner(object):
 
 def _get_tracking_uri_for_run():
     uri = tracking.get_tracking_uri()
-    if uri.startswith("databricks"):
-        return "databricks"
-    return uri
+    return "databricks" if uri.startswith("databricks") else uri
 
 
 def _get_cluster_mlflow_run_cmd(project_dir, run_id, entry_point, parameters):
@@ -301,7 +296,7 @@ def _get_cluster_mlflow_run_cmd(project_dir, run_id, entry_point, parameters):
         mlflow_run_arr.extend(["-c", json.dumps({MLFLOW_LOCAL_BACKEND_RUN_ID_CONFIG: run_id})])
     if parameters:
         for key, value in parameters.items():
-            mlflow_run_arr.extend(["-P", "%s=%s" % (key, value)])
+            mlflow_run_arr.extend(["-P", f"{key}={value}"])
     return mlflow_run_arr
 
 

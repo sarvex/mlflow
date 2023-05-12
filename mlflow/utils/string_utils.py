@@ -1,7 +1,5 @@
 def strip_prefix(original, prefix):
-    if original.startswith(prefix):
-        return original[len(prefix) :]
-    return original
+    return original[len(prefix) :] if original.startswith(prefix) else original
 
 
 def strip_suffix(original, suffix):

@@ -37,9 +37,9 @@ def test_run_local_params(name):
             "-P",
             "greeting=hi",
             "-P",
-            "name=%s" % name,
+            f"name={name}",
             "-P",
-            "excitement=%s" % excitement_arg,
+            f"excitement={excitement_arg}",
         ],
     )
 
@@ -88,7 +88,7 @@ def clean_mlruns_dir():
 def test_run_local_conda_env():
     with open(os.path.join(TEST_PROJECT_DIR, "conda.yaml"), "r") as handle:
         conda_env_contents = handle.read()
-    expected_env_name = "mlflow-%s" % hashlib.sha1(conda_env_contents.encode("utf-8")).hexdigest()
+    expected_env_name = f'mlflow-{hashlib.sha1(conda_env_contents.encode("utf-8")).hexdigest()}'
     try:
         process.exec_cmd(cmd=["conda", "env", "remove", "--name", expected_env_name])
     except process.ShellCommandException:
@@ -99,14 +99,20 @@ def test_run_local_conda_env():
         )
     invoke_cli_runner(
         cli.run,
-        [TEST_PROJECT_DIR, "-e", "check_conda_env", "-P", "conda_env_name=%s" % expected_env_name],
+        [
+            TEST_PROJECT_DIR,
+            "-e",
+            "check_conda_env",
+            "-P",
+            f"conda_env_name={expected_env_name}",
+        ],
     )
 
 
 @pytest.mark.large
 def test_run_local_no_spec():
     # Run an example project that doesn't contain an MLproject file
-    expected_env_name = "mlflow-%s" % hashlib.sha1("".encode("utf-8")).hexdigest()
+    expected_env_name = f'mlflow-{hashlib.sha1("".encode("utf-8")).hexdigest()}'
     invoke_cli_runner(
         cli.run,
         [
@@ -114,7 +120,7 @@ def test_run_local_no_spec():
             "-e",
             "check_conda_env.py",
             "-P",
-            "conda-env-name=%s" % expected_env_name,
+            f"conda-env-name={expected_env_name}",
         ],
     )
 
@@ -178,7 +184,7 @@ def test_run_databricks_cluster_spec(tmpdir):
                 "-m",
                 "databricks",
                 "--cluster-spec",
-                json.dumps(cluster_spec) + "JUNK",
+                f"{json.dumps(cluster_spec)}JUNK",
                 "-e",
                 "greeter",
                 "-P",

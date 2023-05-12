@@ -84,7 +84,7 @@ def test_predict_with_old_mlflow_in_conda_and_with_orient_records(iris_data):
         # create env with old mlflow!
         _mlflow_conda_env(
             path=test_model_conda_path,
-            additional_pip_deps=["mlflow=={}".format(test_pyfunc.MLFLOW_VERSION)],
+            additional_pip_deps=[f"mlflow=={test_pyfunc.MLFLOW_VERSION}"],
         )
         pyfunc.save_model(
             path=test_model_path,
@@ -469,9 +469,9 @@ def _validate_with_rest_endpoint(scoring_proc, host_port, df, x, sk_model, enabl
     with RestEndpoint(proc=scoring_proc, port=host_port) as endpoint:
         for content_type in [CONTENT_TYPE_JSON_SPLIT_ORIENTED, CONTENT_TYPE_CSV, CONTENT_TYPE_JSON]:
             scoring_response = endpoint.invoke(df, content_type)
-            assert scoring_response.status_code == 200, (
-                "Failed to serve prediction, got " "response %s" % scoring_response.text
-            )
+            assert (
+                scoring_response.status_code == 200
+            ), f"Failed to serve prediction, got response {scoring_response.text}"
             np.testing.assert_array_equal(
                 np.array(json.loads(scoring_response.text)), sk_model.predict(x)
             )

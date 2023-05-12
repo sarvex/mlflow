@@ -85,7 +85,7 @@ class DeploymentPlugins(PluginManager):
             try:
                 plugin_obj = plugin_like.load()
             except (AttributeError, ImportError) as exc:
-                raise RuntimeError('Failed to load the plugin "{}": {}'.format(item, str(exc)))
+                raise RuntimeError(f'Failed to load the plugin "{item}": {str(exc)}')
             self.registry[item] = plugin_obj
         else:
             plugin_obj = plugin_like
@@ -99,28 +99,20 @@ class DeploymentPlugins(PluginManager):
             elif (
                 inspect.isclass(obj)
                 and issubclass(obj, BaseDeploymentClient)
-                and not obj == BaseDeploymentClient
+                and obj != BaseDeploymentClient
             ):
                 deployment_classes.append(name)
-        if len(expected) > 0:
+        if expected:
             raise MlflowException(
-                "Plugin registered for the target {} does not has all "
-                "the required interfaces. Raise an issue with the "
-                "plugin developers.\n"
-                "Missing interfaces: {}".format(item, expected),
+                f"Plugin registered for the target {item} does not has all the required interfaces. Raise an issue with the plugin developers.\nMissing interfaces: {expected}",
                 error_code=INTERNAL_ERROR,
             )
         if len(deployment_classes) > 1:
             raise MlflowException(
-                "Plugin registered for the target {} has more than one "
-                "child class of BaseDeploymentClient. Raise an issue with"
-                " the plugin developers. "
-                "Classes found are {}".format(item, deployment_classes)
+                f"Plugin registered for the target {item} has more than one child class of BaseDeploymentClient. Raise an issue with the plugin developers. Classes found are {deployment_classes}"
             )
-        elif len(deployment_classes) == 0:
+        elif not deployment_classes:
             raise MlflowException(
-                "Plugin registered for the target {} has no child class"
-                " of BaseDeploymentClient. Raise an issue with the "
-                "plugin developers".format(item)
+                f"Plugin registered for the target {item} has no child class of BaseDeploymentClient. Raise an issue with the plugin developers"
             )
         return plugin_obj

@@ -170,11 +170,7 @@ def hdfs_system(scheme, host, port):
     kerberos_user = os.getenv("MLFLOW_KERBEROS_USER")
     extra_conf = _parse_extra_conf(os.getenv("MLFLOW_PYARROW_EXTRA_CONF"))
 
-    if host:
-        host = scheme + "://" + host
-    else:
-        host = "default"
-
+    host = f"{scheme}://{host}" if host else "default"
     connected = pa.hdfs.connect(
         host=host,
         port=port or 0,
@@ -195,9 +191,7 @@ def _resolve_connection_params(artifact_uri):
 def _resolve_base_path(path, artifact_path):
     if path == artifact_path:
         return path
-    if artifact_path:
-        return posixpath.join(path, artifact_path)
-    return path
+    return posixpath.join(path, artifact_path) if artifact_path else path
 
 
 def _relative_path(base_dir, subdir_path, path_module):

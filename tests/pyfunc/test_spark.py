@@ -19,7 +19,7 @@ from mlflow.pyfunc.spark_model_cache import SparkModelCache
 import tests
 from mlflow.types import Schema, ColSpec
 
-prediction = [int(1), int(2), "class1", float(0.1), 0.2]
+prediction = [1, 2, "class1", 0.1, 0.2]
 types = [np.int32, np.int, np.str, np.float32, np.double]
 
 
@@ -35,14 +35,13 @@ class ConstantPyfuncWrapper(object):
     @staticmethod
     def predict(model_input):
         m, _ = model_input.shape
-        prediction_df = pd.DataFrame(
+        return pd.DataFrame(
             data={
-                str(i): np.array([prediction[i] for j in range(m)], dtype=types[i])
+                str(i): np.array([prediction[i] for _ in range(m)], dtype=types[i])
                 for i in range(len(prediction))
             },
             columns=[str(i) for i in range(len(prediction))],
         )
-        return prediction_df
 
 
 def _load_pyfunc(_):
@@ -118,6 +117,7 @@ def test_spark_udf(spark, model_path):
 
 
 def test_spark_udf_autofills_no_arguments(spark):
+
     class TestModel(PythonModel):
         def predict(self, context, model_input):
             return [model_input.columns] * len(model_input)
@@ -133,7 +133,9 @@ def test_spark_udf_autofills_no_arguments(spark):
     with mlflow.start_run() as run:
         mlflow.pyfunc.log_model("model", python_model=TestModel(), signature=signature)
         udf = mlflow.pyfunc.spark_udf(
-            spark, "runs:/{}/model".format(run.info.run_id), result_type=ArrayType(StringType())
+            spark,
+            f"runs:/{run.info.run_id}/model",
+            result_type=ArrayType(StringType()),
         )
         res = good_data.withColumn("res", udf()).select("res").toPandas()
         assert res["res"][0] == ["a", "b", "c"]
@@ -160,7 +162,9 @@ def test_spark_udf_autofills_no_arguments(spark):
     with mlflow.start_run() as run:
         mlflow.pyfunc.log_model("model", python_model=TestModel(), signature=nameless_signature)
         udf = mlflow.pyfunc.spark_udf(
-            spark, "runs:/{}/model".format(run.info.run_id), result_type=ArrayType(StringType())
+            spark,
+            f"runs:/{run.info.run_id}/model",
+            result_type=ArrayType(StringType()),
         )
         with pytest.raises(
             MlflowException, match=r"Cannot apply udf because no column names specified",
@@ -171,13 +175,16 @@ def test_spark_udf_autofills_no_arguments(spark):
         # model without signature
         mlflow.pyfunc.log_model("model", python_model=TestModel())
         udf = mlflow.pyfunc.spark_udf(
-            spark, "runs:/{}/model".format(run.info.run_id), result_type=ArrayType(StringType())
+            spark,
+            f"runs:/{run.info.run_id}/model",
+            result_type=ArrayType(StringType()),
         )
         with pytest.raises(pyspark.sql.utils.PythonException):
             res = good_data.withColumn("res", udf()).select("res").toPandas()
 
 
 def test_spark_udf_autofills_column_names_with_schema(spark):
+
     class TestModel(PythonModel):
         def predict(self, context, model_input):
             return [model_input.columns] * len(model_input)
@@ -189,7 +196,9 @@ def test_spark_udf_autofills_column_names_with_schema(spark):
     with mlflow.start_run() as run:
         mlflow.pyfunc.log_model("model", python_model=TestModel(), signature=signature)
         udf = mlflow.pyfunc.spark_udf(
-            spark, "runs:/{}/model".format(run.info.run_id), result_type=ArrayType(StringType())
+            spark,
+            f"runs:/{run.info.run_id}/model",
+            result_type=ArrayType(StringType()),
         )
         data = spark.createDataFrame(
             pd.DataFrame(
@@ -206,6 +215,7 @@ def test_spark_udf_autofills_column_names_with_schema(spark):
 
 
 def test_spark_udf_with_datetime_columns(spark):
+
     class TestModel(PythonModel):
         def predict(self, context, model_input):
             return [model_input.columns] * len(model_input)
@@ -217,7 +227,9 @@ def test_spark_udf_with_datetime_columns(spark):
     with mlflow.start_run() as run:
         mlflow.pyfunc.log_model("model", python_model=TestModel(), signature=signature)
         udf = mlflow.pyfunc.spark_udf(
-            spark, "runs:/{}/model".format(run.info.run_id), result_type=ArrayType(StringType())
+            spark,
+            f"runs:/{run.info.run_id}/model",
+            result_type=ArrayType(StringType()),
         )
         data = spark.range(10).selectExpr(
             "current_timestamp() as timestamp", "current_date() as date"

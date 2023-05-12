@@ -177,7 +177,7 @@ def test_model_load_from_remote_uri_succeeds(reg_model, model_path, mock_s3_buck
     artifact_path = "model"
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     loaded_model = mlflow.catboost.load_model(model_uri=model_uri)
     np.testing.assert_array_almost_equal(
         model.predict(inference_dataframe), loaded_model.predict(inference_dataframe),
@@ -193,7 +193,7 @@ def test_log_model(cb_model, tmpdir):
         _mlflow_conda_env(conda_env, additional_pip_deps=["catboost"])
 
         mlflow.catboost.log_model(model, artifact_path, conda_env=conda_env)
-        model_uri = "runs:/{}/{}".format(mlflow.active_run().info.run_id, artifact_path)
+        model_uri = f"runs:/{mlflow.active_run().info.run_id}/{artifact_path}"
 
         loaded_model = mlflow.catboost.load_model(model_uri)
         np.testing.assert_array_almost_equal(
@@ -211,7 +211,7 @@ def test_log_model(cb_model, tmpdir):
 def test_log_model_calls_register_model(cb_model, tmpdir):
     artifact_path = "model"
     registered_model_name = "registered_model"
-    with mlflow.start_run() as run, mock.patch("mlflow.register_model") as register_model_mock:
+    with (mlflow.start_run() as run, mock.patch("mlflow.register_model") as register_model_mock):
         conda_env_path = os.path.join(tmpdir.strpath, "conda_env.yaml")
         _mlflow_conda_env(conda_env_path, additional_pip_deps=["catboost"])
         mlflow.catboost.log_model(
@@ -220,7 +220,7 @@ def test_log_model_calls_register_model(cb_model, tmpdir):
             conda_env=conda_env_path,
             registered_model_name=registered_model_name,
         )
-        model_uri = "runs:/{}/{}".format(run.info.run_id, artifact_path)
+        model_uri = f"runs:/{run.info.run_id}/{artifact_path}"
         register_model_mock.assert_called_once_with(
             model_uri, registered_model_name, await_registration_for=DEFAULT_AWAIT_MAX_SLEEP_SECONDS
         )

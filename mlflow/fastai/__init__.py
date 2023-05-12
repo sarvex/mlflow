@@ -142,7 +142,7 @@ def save_model(
 
     path = os.path.abspath(path)
     if os.path.exists(path):
-        raise MlflowException("Path '{}' already exists".format(path))
+        raise MlflowException(f"Path '{path}' already exists")
     model_data_subpath = "model.fastai"
     model_data_path = os.path.join(path, model_data_subpath)
     model_data_path = Path(model_data_path)

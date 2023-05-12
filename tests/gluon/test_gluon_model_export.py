@@ -31,12 +31,7 @@ from tests.helper_functions import (
     _is_available_on_pypi,
 )
 
-if Version(mx.__version__) >= Version("2.0.0"):
-    array_module = mx.np
-else:
-    array_module = mx.nd
-
-
+array_module = mx.np if Version(mx.__version__) >= Version("2.0.0") else mx.nd
 EXTRA_PYFUNC_SERVING_TEST_ARGS = [] if _is_available_on_pypi("mxnet") else ["--no-conda"]
 
 

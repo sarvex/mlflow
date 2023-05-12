@@ -49,10 +49,7 @@ def upgrade():
         if not run.user_id:
             continue
 
-        tag_exists = False
-        for tag in run.tags:
-            if tag.key == MLFLOW_USER:
-                tag_exists = True
+        tag_exists = any(tag.key == MLFLOW_USER for tag in run.tags)
         if tag_exists:
             continue
 

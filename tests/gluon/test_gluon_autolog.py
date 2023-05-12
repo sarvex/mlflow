@@ -16,10 +16,7 @@ from unittest.mock import patch
 from tests.gluon.utils import is_mxnet_older_than_1_6_0, get_estimator
 
 
-if Version(mx.__version__) >= Version("2.0.0"):
-    array_module = mx.np
-else:
-    array_module = mx.nd
+array_module = mx.np if Version(mx.__version__) >= Version("2.0.0") else mx.nd
 
 
 class LogsDataset(Dataset):
@@ -78,7 +75,7 @@ def gluon_random_data_run(log_models=True):
 def test_gluon_autolog_logs_expected_data(gluon_random_data_run):
     data = gluon_random_data_run.data
     train_prefix = get_train_prefix()
-    assert "{} accuracy".format(train_prefix) in data.metrics
+    assert f"{train_prefix} accuracy" in data.metrics
     assert "validation accuracy" in data.metrics
 
     # In mxnet >= 1.6.0, `Estimator` monitors `loss` only when `train_metrics` is specified.
@@ -86,7 +83,7 @@ def test_gluon_autolog_logs_expected_data(gluon_random_data_run):
     # estimator.Estimator(loss=SomeLoss())  # monitors `loss`
     # estimator.Estimator(loss=SomeLoss(), train_metrics=SomeMetric()) # doesn't monitor `loss`
     if is_mxnet_older_than_1_6_0():
-        assert "{} softmaxcrossentropyloss".format(train_prefix) in data.metrics
+        assert f"{train_prefix} softmaxcrossentropyloss" in data.metrics
         assert "validation softmaxcrossentropyloss" in data.metrics
     assert "optimizer_name" in data.params
     assert data.params["optimizer_name"] == "Adam"
@@ -131,7 +128,9 @@ def test_gluon_autolog_model_can_load_from_artifact(gluon_random_data_run):
     artifacts = list(map(lambda x: x.path, artifacts))
     assert "model" in artifacts
     ctx = mx.cpu()
-    model = mlflow.gluon.load_model("runs:/" + gluon_random_data_run.info.run_id + "/model", ctx)
+    model = mlflow.gluon.load_model(
+        f"runs:/{gluon_random_data_run.info.run_id}/model", ctx
+    )
     model(array_module.array(np.random.rand(1000, 1, 32)))
 
 

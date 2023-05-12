@@ -32,11 +32,11 @@ if __name__ == "__main__":
         model.fit(train_x, train_y)
     print("MSE:", mean_squared_error(model.predict(val_x), val_y))
     print("Target names: ", target_names)
-    print("run_id: {}".format(run.info.run_id))
+    print(f"run_id: {run.info.run_id}")
 
     # Register the auto-logged model
-    model_uri = "runs:/{}/model".format(run.info.run_id)
+    model_uri = f"runs:/{run.info.run_id}/model"
     registered_model_name = "RayMLflowIntegration"
     mv = mlflow.register_model(model_uri, registered_model_name)
-    print("Name: {}".format(mv.name))
-    print("Version: {}".format(mv.version))
+    print(f"Name: {mv.name}")
+    print(f"Version: {mv.version}")

@@ -385,7 +385,7 @@ def test_model_load_from_remote_uri_succeeds(model, model_path, mock_s3_bucket, 
     artifact_repo = S3ArtifactRepository(artifact_root)
     artifact_repo.log_artifacts(model_path, artifact_path=artifact_path)
 
-    model_uri = artifact_root + "/" + artifact_path
+    model_uri = f"{artifact_root}/{artifact_path}"
     model_loaded = mlflow.keras.load_model(model_uri=model_uri)
     assert all(model_loaded.predict(x.values) == predicted)
 

@@ -133,10 +133,10 @@ class ArtifactRepository:
 
         def download_artifact_dir(src_artifact_dir_path, dst_local_dir_path):
             local_dir = os.path.join(dst_local_dir_path, src_artifact_dir_path)
-            dir_content = [  # prevent infinite loop, sometimes the dir is recursively included
+            dir_content = [
                 file_info
                 for file_info in self.list_artifacts(src_artifact_dir_path)
-                if file_info.path != "." and file_info.path != src_artifact_dir_path
+                if file_info.path not in [".", src_artifact_dir_path]
             ]
             if not dir_content:  # empty dir
                 if not os.path.exists(local_dir):
@@ -208,5 +208,5 @@ class ArtifactRepository:
 def verify_artifact_path(artifact_path):
     if artifact_path and path_not_unique(artifact_path):
         raise MlflowException(
-            "Invalid artifact path: '%s'. %s" % (artifact_path, bad_path_message(artifact_path))
+            f"Invalid artifact path: '{artifact_path}'. {bad_path_message(artifact_path)}"
         )

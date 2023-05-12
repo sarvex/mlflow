@@ -9,14 +9,14 @@ from mlflow.protos.service_pb2 import RunInfo as ProtoRunInfo
 def check_run_is_active(run_info):
     if run_info.lifecycle_stage != LifecycleStage.ACTIVE:
         raise MlflowException(
-            "The run {} must be in 'active' lifecycle_stage.".format(run_info.run_id)
+            f"The run {run_info.run_id} must be in 'active' lifecycle_stage."
         )
 
 
 def check_run_is_deleted(run_info):
     if run_info.lifecycle_stage != LifecycleStage.DELETED:
         raise MlflowException(
-            "The run {} must be in 'deleted' lifecycle_stage.".format(run_info.run_id)
+            f"The run {run_info.run_id} must be in 'deleted' lifecycle_stage."
         )
 
 
@@ -73,10 +73,7 @@ class RunInfo(_MLflowObject):
         self._artifact_uri = artifact_uri
 
     def __eq__(self, other):
-        if type(other) is type(self):
-            # TODO deep equality here?
-            return self.__dict__ == other.__dict__
-        return False
+        return self.__dict__ == other.__dict__ if type(other) is type(self) else False
 
     def _copy_with_overrides(self, status=None, end_time=None, lifecycle_stage=None):
         """A copy of the RunInfo with certain attributes modified."""
@@ -183,7 +180,8 @@ class RunInfo(_MLflowObject):
             [
                 p
                 for p in cls.__dict__
-                if isinstance(getattr(cls, p), searchable_attribute)
-                or isinstance(getattr(cls, p), orderable_attribute)
+                if isinstance(
+                    getattr(cls, p), (searchable_attribute, orderable_attribute)
+                )
             ]
         )

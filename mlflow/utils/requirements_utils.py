@@ -329,8 +329,7 @@ def _infer_requirements(model_uri, flavor):
         *_MODULES_TO_PACKAGES.get("mlflow", []),
     ]
     packages = packages - set(excluded_packages)
-    unrecognized_packages = packages - _PYPI_PACKAGE_INDEX.package_names
-    if unrecognized_packages:
+    if unrecognized_packages := packages - _PYPI_PACKAGE_INDEX.package_names:
         _logger.warning(
             "The following packages were not found in the public PyPI package index as of"
             " %s; if these packages are not present in the public PyPI index, you must install"
@@ -387,8 +386,7 @@ def _get_pinned_requirement(package, version=None, module=None):
     """
     if version is None:
         version_raw = _get_installed_version(package, module)
-        local_version_label = _get_local_version_label(version_raw)
-        if local_version_label:
+        if local_version_label := _get_local_version_label(version_raw):
             version = _strip_local_version_label(version_raw)
             msg = (
                 "Found {package} version ({version_raw}) contains a local version label "

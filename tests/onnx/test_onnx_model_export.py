@@ -55,8 +55,10 @@ def data():
 @pytest.fixture(scope="module")
 def dataset(data):
     x, y = data
-    dataset = [(xi.astype(np.float32), yi.astype(np.float32)) for xi, yi in zip(x.values, y.values)]
-    return dataset
+    return [
+        (xi.astype(np.float32), yi.astype(np.float32))
+        for xi, yi in zip(x.values, y.values)
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -103,6 +105,9 @@ def onnx_model(model, sample_input, tmpdir):
 
 @pytest.fixture(scope="module")
 def multi_tensor_model(dataset):
+
+
+
     class MyModel(nn.Module):
         def __init__(self, n):
             super(MyModel, self).__init__()
@@ -110,15 +115,16 @@ def multi_tensor_model(dataset):
             self._train = True
 
         def forward(self, sepal_features, petal_features):
-            if not self.training:
-                if isinstance(sepal_features, np.ndarray):
-                    sepal_features = torch.from_numpy(sepal_features)
-                if isinstance(petal_features, np.ndarray):
-                    petal_features = torch.from_numpy(petal_features)
-                with torch.no_grad():
-                    return self.linear(torch.cat((sepal_features, petal_features), dim=-1))
-            else:
+            if self.training:
                 return self.linear(torch.cat((sepal_features, petal_features), dim=-1))
+
+            if isinstance(sepal_features, np.ndarray):
+                sepal_features = torch.from_numpy(sepal_features)
+            if isinstance(petal_features, np.ndarray):
+                petal_features = torch.from_numpy(petal_features)
+            with torch.no_grad():
+                return self.linear(torch.cat((sepal_features, petal_features), dim=-1))
+
 
     model = MyModel(4)
     model.train()

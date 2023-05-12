@@ -23,9 +23,7 @@ class RequestHeaderProviderRegistry(object):
                 self.register(entrypoint.load())
             except (AttributeError, ImportError) as exc:
                 warnings.warn(
-                    'Failure attempting to register request header provider "{}": {}'.format(
-                        entrypoint.name, str(exc)
-                    ),
+                    f'Failure attempting to register request header provider "{entrypoint.name}": {str(exc)}',
                     stacklevel=2,
                 )
 
@@ -56,7 +54,7 @@ def resolve_request_headers(request_headers=None):
     for provider in _request_header_provider_registry:
         try:
             if provider.in_context():
-                all_request_headers.update(provider.request_headers())
+                all_request_headers |= provider.request_headers()
         except Exception as e:
             _logger.warning("Encountered unexpected error during resolving request headers: %s", e)
 

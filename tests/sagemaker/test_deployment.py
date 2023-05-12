@@ -42,7 +42,7 @@ def pretrained_model():
         lr.fit(X, y)
         mlflow.sklearn.log_model(lr, model_path)
         run_id = mlflow.active_run().info.run_id
-        model_uri = "runs:/" + run_id + "/" + model_path
+        model_uri = f"runs:/{run_id}/{model_path}"
         return TrainedModel(model_path, run_id, model_uri)
 
 
@@ -187,11 +187,11 @@ def test_deploy_creates_sagemaker_and_s3_resources_with_expected_names_from_loca
     object_names = [
         entry["Key"] for entry in s3_client.list_objects(Bucket=default_bucket)["Contents"]
     ]
-    assert any([model_name in object_name for object_name in object_names])
+    assert any(model_name in object_name for object_name in object_names)
     assert any(
-        [
-            app_name in config["EndpointConfigName"]
-            for config in sagemaker_client.list_endpoint_configs()["EndpointConfigs"]
+        app_name in config["EndpointConfigName"]
+        for config in sagemaker_client.list_endpoint_configs()[
+            "EndpointConfigs"
         ]
     )
     assert app_name in [
@@ -230,11 +230,11 @@ def test_deploy_cli_creates_sagemaker_and_s3_resources_with_expected_names_from_
     object_names = [
         entry["Key"] for entry in s3_client.list_objects(Bucket=default_bucket)["Contents"]
     ]
-    assert any([model_name in object_name for object_name in object_names])
+    assert any(model_name in object_name for object_name in object_names)
     assert any(
-        [
-            app_name in config["EndpointConfigName"]
-            for config in sagemaker_client.list_endpoint_configs()["EndpointConfigs"]
+        app_name in config["EndpointConfigName"]
+        for config in sagemaker_client.list_endpoint_configs()[
+            "EndpointConfigs"
         ]
     )
     assert app_name in [
@@ -251,7 +251,7 @@ def test_deploy_creates_sagemaker_and_s3_resources_with_expected_names_from_s3(
     artifact_path = "model"
     region_name = sagemaker_client.meta.region_name
     default_bucket = mfs._get_default_s3_bucket(region_name)
-    s3_artifact_repo = S3ArtifactRepository("s3://{}".format(default_bucket))
+    s3_artifact_repo = S3ArtifactRepository(f"s3://{default_bucket}")
     s3_artifact_repo.log_artifacts(local_model_path, artifact_path=artifact_path)
     model_s3_uri = "s3://{bucket_name}/{artifact_path}".format(
         bucket_name=default_bucket, artifact_path=pretrained_model.model_path
@@ -270,11 +270,11 @@ def test_deploy_creates_sagemaker_and_s3_resources_with_expected_names_from_s3(
     object_names = [
         entry["Key"] for entry in s3_client.list_objects(Bucket=default_bucket)["Contents"]
     ]
-    assert any([model_name in object_name for object_name in object_names])
+    assert any(model_name in object_name for object_name in object_names)
     assert any(
-        [
-            app_name in config["EndpointConfigName"]
-            for config in sagemaker_client.list_endpoint_configs()["EndpointConfigs"]
+        app_name in config["EndpointConfigName"]
+        for config in sagemaker_client.list_endpoint_configs()[
+            "EndpointConfigs"
         ]
     )
     assert app_name in [
@@ -291,7 +291,7 @@ def test_deploy_cli_creates_sagemaker_and_s3_resources_with_expected_names_from_
     artifact_path = "model"
     region_name = sagemaker_client.meta.region_name
     default_bucket = mfs._get_default_s3_bucket(region_name)
-    s3_artifact_repo = S3ArtifactRepository("s3://{}".format(default_bucket))
+    s3_artifact_repo = S3ArtifactRepository(f"s3://{default_bucket}")
     s3_artifact_repo.log_artifacts(local_model_path, artifact_path=artifact_path)
     model_s3_uri = "s3://{bucket_name}/{artifact_path}".format(
         bucket_name=default_bucket, artifact_path=pretrained_model.model_path
@@ -315,11 +315,11 @@ def test_deploy_cli_creates_sagemaker_and_s3_resources_with_expected_names_from_
     object_names = [
         entry["Key"] for entry in s3_client.list_objects(Bucket=default_bucket)["Contents"]
     ]
-    assert any([model_name in object_name for object_name in object_names])
+    assert any(model_name in object_name for object_name in object_names)
     assert any(
-        [
-            app_name in config["EndpointConfigName"]
-            for config in sagemaker_client.list_endpoint_configs()["EndpointConfigs"]
+        app_name in config["EndpointConfigName"]
+        for config in sagemaker_client.list_endpoint_configs()[
+            "EndpointConfigs"
         ]
     )
     assert app_name in [
@@ -555,10 +555,8 @@ def test_deploy_in_replace_model_removes_preexisting_models_from_endpoint(
     ]
     assert len(deployed_models_after_replacement) == 1
     assert all(
-        [
-            model_name not in deployed_models_after_replacement
-            for model_name in deployed_models_before_replacement
-        ]
+        model_name not in deployed_models_after_replacement
+        for model_name in deployed_models_before_replacement
     )
 
 
@@ -711,15 +709,14 @@ def test_deploy_in_replace_mode_with_archiving_does_not_delete_resources(
         model["ModelName"] for model in sagemaker_client.list_models()["Models"]
     ]
     assert all(
-        [
-            object_name in object_names_after_replacement
-            for object_name in object_names_before_replacement
-        ]
+        object_name in object_names_after_replacement
+        for object_name in object_names_before_replacement
     )
     assert all(
-        [
-            endpoint_config in endpoint_configs_after_replacement
-            for endpoint_config in endpoint_configs_before_replacement
-        ]
+        endpoint_config in endpoint_configs_after_replacement
+        for endpoint_config in endpoint_configs_before_replacement
     )
-    assert all([model in models_after_replacement for model in models_before_replacement])
+    assert all(
+        model in models_after_replacement
+        for model in models_before_replacement
+    )

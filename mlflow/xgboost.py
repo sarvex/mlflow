@@ -139,7 +139,7 @@ def save_model(
 
     path = os.path.abspath(path)
     if os.path.exists(path):
-        raise MlflowException("Path '{}' already exists".format(path))
+        raise MlflowException(f"Path '{path}' already exists")
     os.makedirs(path)
     if mlflow_model is None:
         mlflow_model = Model()
@@ -342,7 +342,7 @@ def autolog(
     exclusive=False,
     disable_for_unsupported_versions=False,
     silent=False,
-):  # pylint: disable=W0102,unused-argument
+):    # pylint: disable=W0102,unused-argument
     """
     Enables (or disables) and configures autologging from XGBoost to MLflow. Logs the following:
 
@@ -396,7 +396,7 @@ def autolog(
     #   (there is no way to get the data back from a DMatrix object)
     # We store it on the DMatrix object so the train function is able to read it.
     def __init__(original, self, *args, **kwargs):
-        data = args[0] if len(args) > 0 else kwargs.get("data")
+        data = args[0] if args else kwargs.get("data")
 
         if data is not None:
             try:
@@ -566,7 +566,7 @@ def autolog(
         autologging_client = MlflowAutologgingQueueingClient()
         # logging booster params separately to extract key/value pairs and make it easier to
         # compare them across runs.
-        booster_params = args[0] if len(args) > 0 else kwargs["params"]
+        booster_params = args[0] if args else kwargs["params"]
         autologging_client.log_params(run_id=mlflow.active_run().info.run_id, params=booster_params)
 
         unlogged_params = [

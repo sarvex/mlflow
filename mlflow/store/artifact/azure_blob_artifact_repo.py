@@ -59,14 +59,14 @@ class AzureBlobArtifactRepository(ArtifactRepository):
         """Parse a wasbs:// URI, returning (container, storage_account, path)."""
         parsed = urllib.parse.urlparse(uri)
         if parsed.scheme != "wasbs":
-            raise Exception("Not a WASBS URI: %s" % uri)
+            raise Exception(f"Not a WASBS URI: {uri}")
         match = re.match("([^@]+)@([^.]+)\\.blob\\.core\\.windows\\.net", parsed.netloc)
         if match is None:
             raise Exception(
                 "WASBS URI must be of the form " "<container>@<account>.blob.core.windows.net"
             )
-        container = match.group(1)
-        storage_account = match.group(2)
+        container = match[1]
+        storage_account = match[2]
         path = parsed.path
         if path.startswith("/"):
             path = path[1:]
@@ -114,7 +114,7 @@ class AzureBlobArtifactRepository(ArtifactRepository):
         if path:
             dest_path = posixpath.join(dest_path, path)
         infos = []
-        prefix = dest_path if dest_path.endswith("/") else dest_path + "/"
+        prefix = dest_path if dest_path.endswith("/") else f"{dest_path}/"
         results = container_client.walk_blobs(name_starts_with=prefix)
         for r in results:
             if not r.name.startswith(artifact_path):

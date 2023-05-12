@@ -101,9 +101,9 @@ class TestModelVersion(unittest.TestCase):
         self.assertEqual(proto.version, "5")
         self.assertEqual(proto.status, ModelVersionStatus.from_string("READY"))
         self.assertEqual(proto.status_message, "Model version #5 is ready to use.")
-        self.assertEqual(set([tag.key for tag in proto.tags]), set(["key", "randomKey"]))
+        self.assertEqual({tag.key for tag in proto.tags}, {"key", "randomKey"})
         self.assertEqual(
-            set([tag.value for tag in proto.tags]), set(["value", "not a random value"])
+            {tag.value for tag in proto.tags}, {"value", "not a random value"}
         )
         mvd_2 = ModelVersion.from_proto(proto)
         self._check(
@@ -122,7 +122,7 @@ class TestModelVersion(unittest.TestCase):
             {tag.key: tag.value for tag in (tags or [])},
         )
 
-        expected_dict.update({"registered_model": RegisteredModel(name)})
+        expected_dict["registered_model"] = RegisteredModel(name)
         expected_dict["tags"] = tags
         mvd_3 = ModelVersion.from_dictionary(expected_dict)
         self._check(

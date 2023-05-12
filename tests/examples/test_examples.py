@@ -50,7 +50,7 @@ def replace_mlflow_with_dev_version(yml_path):
     with open(yml_path, "r") as f:
         old_src = f.read()
         mlflow_dir = os.path.dirname(mlflow.__path__[0])
-        new_src = re.sub(r"- mlflow.*\n", "- {}\n".format(mlflow_dir), old_src)
+        new_src = re.sub(r"- mlflow.*\n", f"- {mlflow_dir}\n", old_src)
 
     with open(yml_path, "w") as f:
         f.write(new_src)
@@ -121,7 +121,7 @@ def test_mlflow_run_example(directory, params, tmpdir):
 
     # remove old conda environments to free disk space
     envs = list(filter(is_mlflow_conda_env, get_conda_envs()))
-    current_env_name = "mlflow-" + hash_conda_env(conda_yml_path)
+    current_env_name = f"mlflow-{hash_conda_env(conda_yml_path)}"
     envs_to_remove = list(filter(lambda e: e != current_env_name, envs))
     for env in envs_to_remove:
         remove_conda_env(env)

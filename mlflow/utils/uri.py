@@ -18,12 +18,12 @@ _DBFS_HDFS_URI_PREFIX = "dbfs:/"
 def is_local_uri(uri):
     """Returns true if this is a local file path (/foo or file:/foo)."""
     scheme = urllib.parse.urlparse(uri).scheme
-    return uri != "databricks" and (scheme == "" or scheme == "file")
+    return uri != "databricks" and scheme in ["", "file"]
 
 
 def is_http_uri(uri):
     scheme = urllib.parse.urlparse(uri).scheme
-    return scheme == "http" or scheme == "https"
+    return scheme in ["http", "https"]
 
 
 def is_databricks_uri(uri):
@@ -37,7 +37,7 @@ def is_databricks_uri(uri):
 
 def construct_db_uri_from_profile(profile):
     if profile:
-        return "databricks://" + profile
+        return f"databricks://{profile}"
 
 
 # Both scope and key_prefix should not contain special chars for URIs, like '/'
@@ -46,18 +46,21 @@ def validate_db_scope_prefix_info(scope, prefix):
     for c in ["/", ":", " "]:
         if c in scope:
             raise MlflowException(
-                "Unsupported Databricks profile name: %s." % scope
-                + " Profile names cannot contain '%s'." % c
+                (
+                    f"Unsupported Databricks profile name: {scope}."
+                    + f" Profile names cannot contain '{c}'."
+                )
             )
         if prefix and c in prefix:
             raise MlflowException(
-                "Unsupported Databricks profile key prefix: %s." % prefix
-                + " Key prefixes cannot contain '%s'." % c
+                (
+                    f"Unsupported Databricks profile key prefix: {prefix}."
+                    + f" Key prefixes cannot contain '{c}'."
+                )
             )
     if prefix is not None and prefix.strip() == "":
         raise MlflowException(
-            "Unsupported Databricks profile key prefix: '%s'." % prefix
-            + " Key prefixes cannot be empty."
+            f"Unsupported Databricks profile key prefix: '{prefix}'. Key prefixes cannot be empty."
         )
 
 
@@ -71,8 +74,7 @@ def get_db_info_from_uri(uri):
         # netloc should not be an empty string unless URI is formatted incorrectly.
         if parsed_uri.netloc == "":
             raise MlflowException(
-                "URI is formatted incorrectly: no netloc in URI '%s'." % uri
-                + " This may be the case if there is only one slash in the URI."
+                f"URI is formatted incorrectly: no netloc in URI '{uri}'. This may be the case if there is only one slash in the URI."
             )
         profile_tokens = parsed_uri.netloc.split(":")
         parsed_scope = profile_tokens[0]
@@ -100,8 +102,8 @@ def get_databricks_profile_uri_from_artifact_uri(uri):
     if not parsed.username:  # no profile or scope:key
         return "databricks"  # the default tracking/registry URI
     validate_db_scope_prefix_info(parsed.username, parsed.password)
-    key_prefix = ":" + parsed.password if parsed.password else ""
-    return "databricks://" + parsed.username + key_prefix
+    key_prefix = f":{parsed.password}" if parsed.password else ""
+    return f"databricks://{parsed.username}{key_prefix}"
 
 
 def remove_databricks_profile_info_from_artifact_uri(artifact_uri):
@@ -128,17 +130,16 @@ def add_databricks_profile_info_to_artifact_uri(artifact_uri, databricks_profile
         return artifact_uri
 
     scheme = artifact_uri_parsed.scheme
-    if scheme == "dbfs" or scheme == "runs" or scheme == "models":
-        if databricks_profile_uri == "databricks":
-            netloc = "databricks"
-        else:
-            (profile, key_prefix) = get_db_info_from_uri(databricks_profile_uri)
-            prefix = ":" + key_prefix if key_prefix else ""
-            netloc = profile + prefix + "@databricks"
-        new_parsed = artifact_uri_parsed._replace(netloc=netloc)
-        return urllib.parse.urlunparse(new_parsed)
-    else:
+    if scheme not in ["dbfs", "runs", "models"]:
         return artifact_uri
+    if databricks_profile_uri == "databricks":
+        netloc = "databricks"
+    else:
+        (profile, key_prefix) = get_db_info_from_uri(databricks_profile_uri)
+        prefix = f":{key_prefix}" if key_prefix else ""
+        netloc = profile + prefix + "@databricks"
+    new_parsed = artifact_uri_parsed._replace(netloc=netloc)
+    return urllib.parse.urlunparse(new_parsed)
 
 
 def extract_db_type_from_uri(db_uri):
@@ -154,7 +155,7 @@ def extract_db_type_from_uri(db_uri):
     elif scheme_plus_count == 1:
         db_type, _ = scheme.split("+")
     else:
-        error_msg = "Invalid database URI: '%s'. %s" % (db_uri, _INVALID_DB_URI_MSG)
+        error_msg = f"Invalid database URI: '{db_uri}'. {_INVALID_DB_URI_MSG}"
         raise MlflowException(error_msg, INVALID_PARAMETER_VALUE)
 
     _validate_db_type_string(db_type)
@@ -164,7 +165,7 @@ def extract_db_type_from_uri(db_uri):
 
 def get_uri_scheme(uri_or_path):
     scheme = urllib.parse.urlparse(uri_or_path).scheme
-    if any([scheme.lower().startswith(db) for db in DATABASE_ENGINES]):
+    if any(scheme.lower().startswith(db) for db in DATABASE_ENGINES):
         return extract_db_type_from_uri(uri_or_path)
     else:
         return scheme
@@ -208,7 +209,7 @@ def append_to_uri_path(uri, *paths):
         # not preserve the relative URI path component properly. In certain cases,
         # urlunparse converts relative paths to absolute paths. We introduce this logic
         # to circumvent urlunparse's erroneous conversion
-        prefix = parsed_uri.scheme + ":"
+        prefix = f"{parsed_uri.scheme}:"
         parsed_uri = parsed_uri._replace(scheme="")
 
     new_uri_path = _join_posixpaths_and_append_absolute_suffixes(parsed_uri.path, path)
@@ -259,7 +260,7 @@ def construct_run_url(hostname, experiment_id, run_id, workspace_id=None):
         )
     prefix = hostname
     if workspace_id and workspace_id != "0":
-        prefix += "?o=" + workspace_id
+        prefix += f"?o={workspace_id}"
     return prefix + "#mlflow/experiments/{experiment_id}/runs/{run_id}".format(
         experiment_id=experiment_id, run_id=run_id
     )
@@ -286,11 +287,10 @@ def dbfs_hdfs_uri_to_fuse_path(dbfs_uri):
     """
     if not is_valid_dbfs_uri(dbfs_uri) and dbfs_uri == posixpath.abspath(dbfs_uri):
         # Convert posixpaths (e.g. "/tmp/mlflow") to DBFS URIs by adding "dbfs:/" as a prefix
-        dbfs_uri = "dbfs:" + dbfs_uri
+        dbfs_uri = f"dbfs:{dbfs_uri}"
     if not dbfs_uri.startswith(_DBFS_HDFS_URI_PREFIX):
         raise MlflowException(
-            "Path '%s' did not start with expected DBFS URI prefix '%s'"
-            % (dbfs_uri, _DBFS_HDFS_URI_PREFIX),
+            f"Path '{dbfs_uri}' did not start with expected DBFS URI prefix '{_DBFS_HDFS_URI_PREFIX}'"
         )
 
     return _DBFS_FUSE_PREFIX + dbfs_uri[len(_DBFS_HDFS_URI_PREFIX) :]

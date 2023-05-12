@@ -65,8 +65,8 @@ def run(
     tracking_client = mlflow.tracking.MlflowClient()
 
     def new_eval(
-        nepochs, experiment_id, null_train_loss, null_valid_loss, null_test_loss, return_all=False
-    ):
+            nepochs, experiment_id, null_train_loss, null_valid_loss, null_test_loss, return_all=False
+        ):
         """
         Create a new eval function
 
@@ -131,10 +131,7 @@ def run(
                 }
             )
 
-            if return_all:
-                return train_loss, valid_loss, test_loss
-            else:
-                return valid_loss
+            return (train_loss, valid_loss, test_loss) if return_all else valid_loss
 
         return eval
 

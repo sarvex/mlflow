@@ -30,9 +30,7 @@ def _get_git_commit(path):
 
 def _get_source_version():
     main_file = _get_main_file()
-    if main_file is not None:
-        return _get_git_commit(main_file)
-    return None
+    return _get_git_commit(main_file) if main_file is not None else None
 
 
 class GitRunContext(RunContextProvider):

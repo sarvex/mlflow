@@ -196,7 +196,7 @@ def test_if_getting_input_example_fails(logger):
     assert input_example is None
     assert signature is None
     calls = [
-        call("Failed to gather input example: " + error_msg),
+        call(f"Failed to gather input example: {error_msg}"),
         call(
             "Failed to infer model signature: "
             + "could not sample data to infer model signature: "
@@ -218,7 +218,9 @@ def test_if_model_signature_inference_fails(logger):
 
     assert input_example == "data"
     assert signature is None
-    logger.warning.assert_called_with("Failed to infer model signature: " + error_msg)
+    logger.warning.assert_called_with(
+        f"Failed to infer model signature: {error_msg}"
+    )
 
 
 def test_happy_path_works(logger):
@@ -788,7 +790,7 @@ _module_version_info_dict_patch = {
 )
 def test_is_autologging_integration_supported(flavor, module_version, expected_result):
     module_name, _ = FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY[flavor]
-    with mock.patch(module_name + ".__version__", module_version):
+    with mock.patch(f"{module_name}.__version__", module_version):
         assert expected_result == is_flavor_supported_for_associated_package_versions(flavor)
 
 
@@ -807,7 +809,7 @@ def test_is_autologging_integration_supported(flavor, module_version, expected_r
 )
 def test_dev_version_pyspark_is_supported_in_databricks(flavor, module_version, expected_result):
     module_name, _ = FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY[flavor]
-    with mock.patch(module_name + ".__version__", module_version):
+    with mock.patch(f"{module_name}.__version__", module_version):
         # In Databricks
         with mock.patch(
             "mlflow.utils.autologging_utils.versioning.is_in_databricks_runtime", return_value=True,

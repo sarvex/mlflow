@@ -72,7 +72,7 @@ def databricks_cluster_mlflow_run_cmd_mock():
 @pytest.fixture()
 def cluster_spec_mock(tmpdir):
     cluster_spec_handle = tmpdir.join("cluster_spec.json")
-    cluster_spec_handle.write(json.dumps(dict()))
+    cluster_spec_handle.write(json.dumps({}))
     yield str(cluster_spec_handle)
 
 
@@ -124,10 +124,7 @@ def set_tag_mock():
 def _get_mock_run_state(succeeded):
     if succeeded is None:
         return {"life_cycle_state": "RUNNING", "state_message": ""}
-    if succeeded:
-        run_result_state = "SUCCESS"
-    else:
-        run_result_state = "FAILED"
+    run_result_state = "SUCCESS" if succeeded else "FAILED"
     return {"life_cycle_state": "TERMINATED", "state_message": "", "result_state": run_result_state}
 
 
@@ -281,9 +278,10 @@ def test_run_databricks(
             assert submitted_run.run_id is not None
             assert runs_submit_mock.call_count == 1
             assert databricks_cluster_mlflow_run_cmd_mock.call_count == 1
-            tags = {}
-            for call_args, _ in set_tag_mock.call_args_list:
-                tags[call_args[1]] = call_args[2]
+            tags = {
+                call_args[1]: call_args[2]
+                for call_args, _ in set_tag_mock.call_args_list
+            }
             assert tags[MLFLOW_DATABRICKS_RUN_URL] == "test_url"
             assert tags[MLFLOW_DATABRICKS_SHELL_JOB_RUN_ID] == "-1"
             assert tags[MLFLOW_DATABRICKS_WEBAPP_URL] == "test-host"

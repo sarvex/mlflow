@@ -55,9 +55,7 @@ class Model(object):
         self.__dict__.update(kwargs)
 
     def __eq__(self, other):
-        if not isinstance(other, Model):
-            return False
-        return self.__dict__ == other.__dict__
+        return self.__dict__ == other.__dict__ if isinstance(other, Model) else False
 
     def get_input_schema(self):
         return self.signature.inputs if self.signature is not None else None
@@ -91,8 +89,7 @@ class Model(object):
     def to_dict(self):
         """Serialize the model to a dictionary."""
         res = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-        databricks_runtime = get_databricks_runtime()
-        if databricks_runtime:
+        if databricks_runtime := get_databricks_runtime():
             res["databricks_runtime"] = databricks_runtime
         if self.signature is not None:
             res["signature"] = self.signature.to_dict()
@@ -195,7 +192,7 @@ class Model(object):
             if registered_model_name is not None:
                 run_id = mlflow.tracking.fluent.active_run().info.run_id
                 mlflow.register_model(
-                    "runs:/%s/%s" % (run_id, artifact_path),
+                    f"runs:/{run_id}/{artifact_path}",
                     registered_model_name,
                     await_registration_for=await_registration_for,
                 )

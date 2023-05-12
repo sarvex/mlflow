@@ -113,9 +113,9 @@ def test_expected_tags_logged_when_using_conda():
 @pytest.mark.parametrize("version", [None, "master", "git-commit"])
 def test_run_local_git_repo(local_git_repo, local_git_repo_uri, use_start_run, version):
     if version is not None:
-        uri = local_git_repo_uri + "#" + TEST_PROJECT_NAME
+        uri = f"{local_git_repo_uri}#{TEST_PROJECT_NAME}"
     else:
-        uri = os.path.join("%s/" % local_git_repo, TEST_PROJECT_NAME)
+        uri = os.path.join(f"{local_git_repo}/", TEST_PROJECT_NAME)
     if version == "git-commit":
         version = _get_version_local_git_repo(local_git_repo)
     submitted_run = mlflow.projects.run(
@@ -169,7 +169,7 @@ def test_invalid_version_local_git_repo(local_git_repo_uri):
     # Run project with invalid commit hash
     with pytest.raises(ExecutionException, match=r"Unable to checkout version \'badc0de\'"):
         mlflow.projects.run(
-            local_git_repo_uri + "#" + TEST_PROJECT_NAME,
+            f"{local_git_repo_uri}#{TEST_PROJECT_NAME}",
             entry_point="test_tracking",
             version="badc0de",
             use_conda=False,
@@ -246,7 +246,7 @@ def test_run_with_artifact_path(tmpdir):
         submitted_run = mlflow.projects.run(
             TEST_PROJECT_DIR,
             entry_point="test_artifact_path",
-            parameters={"model": "runs:/%s/model.pkl" % run.info.run_id},
+            parameters={"model": f"runs:/{run.info.run_id}/model.pkl"},
             use_conda=False,
             experiment_id=FileStore.DEFAULT_EXPERIMENT_ID,
         )

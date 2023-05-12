@@ -199,7 +199,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
         """
         try:
             headers = self._extract_headers_from_credentials(credentials.headers)
-            uploading_block_list = list()
+            uploading_block_list = []
             for chunk in yield_file_in_chunks(local_file, _AZURE_MAX_BLOCK_CHUNK_SIZE):
                 # Base64-encode a UUID, producing a UTF8-encoded bytestring. Then, decode
                 # the bytestring for compliance with Azure Blob Storage API requests
@@ -207,17 +207,16 @@ class DatabricksArtifactRepository(ArtifactRepository):
                 try:
                     put_block(credentials.signed_uri, block_id, chunk, headers=headers)
                 except requests.HTTPError as e:
-                    if e.response.status_code in [401, 403]:
-                        _logger.info(
-                            "Failed to authorize request, possibly due to credential expiration."
-                            " Refreshing credentials and trying again..."
-                        )
-                        credential_info = self._get_write_credential_infos(
-                            run_id=self.run_id, paths=[artifact_path]
-                        )[0]
-                        put_block(credential_info.signed_uri, block_id, chunk, headers=headers)
-                    else:
+                    if e.response.status_code not in [401, 403]:
                         raise e
+                    _logger.info(
+                        "Failed to authorize request, possibly due to credential expiration."
+                        " Refreshing credentials and trying again..."
+                    )
+                    credential_info = self._get_write_credential_infos(
+                        run_id=self.run_id, paths=[artifact_path]
+                    )[0]
+                    put_block(credential_info.signed_uri, block_id, chunk, headers=headers)
                 uploading_block_list.append(block_id)
             try:
                 put_block_list(credentials.signed_uri, uploading_block_list, headers=headers)
@@ -315,13 +314,13 @@ class DatabricksArtifactRepository(ArtifactRepository):
         basename = os.path.basename(src_file_path)
         dst_artifact_dir = dst_artifact_dir or ""
         dst_artifact_dir = posixpath.join(dst_artifact_dir, basename)
-        if len(dst_artifact_dir) > 0:
-            run_relative_artifact_path = posixpath.join(
+        return (
+            posixpath.join(
                 self.run_relative_artifact_repo_root_path, dst_artifact_dir
             )
-        else:
-            run_relative_artifact_path = self.run_relative_artifact_repo_root_path
-        return run_relative_artifact_path
+            if len(dst_artifact_dir) > 0
+            else self.run_relative_artifact_repo_root_path
+        )
 
     def log_artifact(self, local_file, artifact_path=None):
         run_relative_artifact_path = self._get_run_relative_artifact_path_for_upload(
@@ -396,7 +395,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
             except Exception as e:
                 failed_uploads[src_file_path] = repr(e)
 
-        if len(failed_uploads) > 0:
+        if failed_uploads:
             raise MlflowException(
                 message=(
                     "The following failures occurred while uploading one or more artifacts"
@@ -538,10 +537,10 @@ class DatabricksArtifactRepository(ArtifactRepository):
             """
             local_dir = os.path.join(dst_local_dir_path, src_artifact_dir_path)
             inflight_downloads = []
-            dir_content = [  # prevent infinite loop, sometimes the dir is recursively included
+            dir_content = [
                 file_info
                 for file_info in self.list_artifacts(src_artifact_dir_path)
-                if file_info.path != "." and file_info.path != src_artifact_dir_path
+                if file_info.path not in [".", src_artifact_dir_path]
             ]
             if not dir_content:  # empty dir
                 if not os.path.exists(local_dir):
@@ -610,7 +609,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
             except Exception as e:
                 failed_downloads[inflight_download.src_artifact_path] = repr(e)
 
-        if len(failed_downloads) > 0:
+        if failed_downloads:
             raise MlflowException(
                 message=(
                     "The following failures occurred while downloading one or more"

@@ -21,8 +21,7 @@ class IrisDataModule(pl.LightningDataModule):
         target = iris["target"]
         data = torch.Tensor(df).float()
         labels = torch.Tensor(target).long()
-        data_set = TensorDataset(data, labels)
-        return data_set
+        return TensorDataset(data, labels)
 
     def setup(self, stage=None):
 
@@ -45,5 +44,3 @@ class IrisDataModule(pl.LightningDataModule):
         return DataLoader(self.test_set, batch_size=4)
 
 
-if __name__ == "__main__":
-    pass

@@ -38,9 +38,7 @@ class RunContextProviderRegistry(object):
                 self.register(entrypoint.load())
             except (AttributeError, ImportError) as exc:
                 warnings.warn(
-                    'Failure attempting to register context provider "{}": {}'.format(
-                        entrypoint.name, str(exc)
-                    ),
+                    f'Failure attempting to register context provider "{entrypoint.name}": {str(exc)}',
                     stacklevel=2,
                 )
 
@@ -76,7 +74,7 @@ def resolve_tags(tags=None):
     for provider in _run_context_provider_registry:
         try:
             if provider.in_context():
-                all_tags.update(provider.tags())
+                all_tags |= provider.tags()
         except Exception as e:
             _logger.warning("Encountered unexpected error during resolving tags: %s", e)
 

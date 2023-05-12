@@ -73,7 +73,7 @@ def read_yaml(location, if_error=None):
                 return yaml.load(f, Loader=yaml.SafeLoader)
     except Exception as e:
         if if_error is not None:
-            print("Failed to read '{}' due to: `{}`".format(location, e))
+            print(f"Failed to read '{location}' due to: `{e}`")
             return if_error
 
         raise
@@ -89,10 +89,10 @@ def get_released_versions(package_name):
     >>> get_released_versions("scikit-learn")
     {'0.10': '2012-01-11T14:42:25', '0.11': '2012-05-08T00:40:14', ...}
     """
-    url = "https://pypi.python.org/pypi/{}/json".format(package_name)
+    url = f"https://pypi.python.org/pypi/{package_name}/json"
     data = json.load(urllib.request.urlopen(url))
 
-    versions = {
+    return {
         # We can actually select any element in `dist_files` because all the distribution files
         # should have almost the same upload time.
         version: dist_files[0]["upload_time"]
@@ -104,7 +104,6 @@ def get_released_versions(package_name):
         # ERROR: Could not find a version that satisfies the requirement xgboost==0.7
         if len(dist_files) > 0 and (not dist_files[0].get("yanked", False))
     }
-    return versions
 
 
 def select_latest_micro_versions(versions):
@@ -210,14 +209,14 @@ def get_changed_flavors(changed_files, flavors):
     []
     """
     changed_flavors = []
+    pattern = r"^(mlflow|tests)/(.+?)(_autolog(ging)?)?(\.py|/)"
     for f in changed_files:
-        pattern = r"^(mlflow|tests)/(.+?)(_autolog(ging)?)?(\.py|/)"
         #                           ~~~~~
         #                           # This group captures a flavor name
         match = re.search(pattern, f)
 
-        if (match is not None) and (match.group(2) in flavors):
-            changed_flavors.append(match.group(2))
+        if match is not None and match[2] in flavors:
+            changed_flavors.append(match[2])
 
     return changed_flavors
 
@@ -258,12 +257,10 @@ def get_operator_and_version(ver_spec):
 
     if m is None:
         raise ValueError(
-            "Invalid value for `ver_spec`: '{}'. Must match this regular expression: '{}'".format(
-                ver_spec, regexp,
-            )
+            f"Invalid value for `ver_spec`: '{ver_spec}'. Must match this regular expression: '{regexp}'"
         )
 
-    return str_to_operator(m.group(1)), m.group(2)
+    return str_to_operator(m[1]), m[2]
 
 
 def process_requirements(requirements, version=None):
@@ -318,7 +315,9 @@ def process_requirements(requirements, version=None):
                 return packages
         return []
 
-    raise TypeError("Invalid object type for `requirements`: '{}'".format(type(requirements)))
+    raise TypeError(
+        f"Invalid object type for `requirements`: '{type(requirements)}'"
+    )
 
 
 def remove_comments(s):
@@ -343,7 +342,7 @@ def make_pip_install_command(packages):
     >>> make_pip_install_command(["foo", "bar"])
     "pip install 'foo' 'bar'"
     """
-    return "pip install " + " ".join("'{}'".format(x) for x in packages)
+    return "pip install " + " ".join(f"'{x}'" for x in packages)
 
 
 def divider(title, length=None):
@@ -356,7 +355,7 @@ def divider(title, length=None):
     length = shutil.get_terminal_size(fallback=(80, 24))[0] if length is None else length
     rest = length - len(title) - 2
     left = rest // 2 if rest % 2 else (rest + 1) // 2
-    return "\n{} {} {}".format("=" * left, title, "=" * (rest - left))
+    return f'\n{"=" * left} {title} {"=" * (rest - left)}'
 
 
 def split_by_comma(x):
@@ -454,7 +453,7 @@ def expand_config(config):
             pip_release = package_info["pip_release"]
             for ver in versions:
                 job_name = " / ".join([flavor_key, ver, key])
-                requirements = ["{}=={}".format(pip_release, ver)]
+                requirements = [f"{pip_release}=={ver}"]
                 requirements.extend(process_requirements(cfg.get("requirements"), ver))
                 install = make_pip_install_command(requirements)
                 run = remove_comments(cfg["run"])
@@ -507,7 +506,7 @@ def process_changed_files(changed_files, matrix_base):
     if changed_files is None:
         return set()
 
-    flavors = set(x["flavor"] for x in matrix_base)
+    flavors = {x["flavor"] for x in matrix_base}
     changed_flavors = (
         # If this file (`dev/set_matrix.py`) has been changed, re-run all tests
         flavors
@@ -562,11 +561,11 @@ def main(args):
         # `::set-output` is a special syntax for GitHub Actions to set an action's output parameter.
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-output-parameter # noqa
         # Note that this actually doesn't print anything to the console.
-        print("::set-output name=matrix::{}".format(json.dumps(matrix)))
+        print(f"::set-output name=matrix::{json.dumps(matrix)}")
 
         # Set a flag that indicates whether or not the matrix is empty. If this flag is 'true',
         # skip the subsequent jobs.
-        print("::set-output name=is_matrix_empty::{}".format("false" if job_names else "true"))
+        print(f'::set-output name=is_matrix_empty::{"false" if job_names else "true"}')
 
 
 if __name__ == "__main__":

@@ -30,16 +30,14 @@ from tests.projects.utils import (
 
 
 def _build_uri(base_uri, subdirectory):
-    if subdirectory != "":
-        return "%s#%s" % (base_uri, subdirectory)
-    return base_uri
+    return f"{base_uri}#{subdirectory}" if subdirectory != "" else base_uri
 
 
 @pytest.fixture
 def zipped_repo(tmpdir):
     import zipfile
 
-    zip_name = tmpdir.join("%s.zip" % TEST_PROJECT_NAME).strpath
+    zip_name = tmpdir.join(f"{TEST_PROJECT_NAME}.zip").strpath
     with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for root, _, files in os.walk(TEST_PROJECT_DIR):
             for file_name in files:
@@ -76,11 +74,19 @@ def test__fetch_project(local_git_repo, local_git_repo_uri, zipped_repo, httpser
     test_list = [
         (TEST_PROJECT_DIR, "", TEST_PROJECT_DIR),
         (local_git_repo_uri, "", local_git_repo),
-        (local_git_repo_uri, "example_project", os.path.join(local_git_repo, "example_project")),
-        (os.path.dirname(TEST_PROJECT_DIR), os.path.basename(TEST_PROJECT_DIR), TEST_PROJECT_DIR),
-        (httpserver.url + "/%s.zip" % TEST_PROJECT_NAME, "", TEST_PROJECT_DIR),
+        (
+            local_git_repo_uri,
+            "example_project",
+            os.path.join(local_git_repo, "example_project"),
+        ),
+        (
+            os.path.dirname(TEST_PROJECT_DIR),
+            os.path.basename(TEST_PROJECT_DIR),
+            TEST_PROJECT_DIR,
+        ),
+        (f"{httpserver.url}/{TEST_PROJECT_NAME}.zip", "", TEST_PROJECT_DIR),
         (zipped_repo, "", TEST_PROJECT_DIR),
-        ("file://%s" % zipped_repo, "", TEST_PROJECT_DIR),
+        (f"file://{zipped_repo}", "", TEST_PROJECT_DIR),
     ]
     for base_uri, subdirectory, expected in test_list:
         work_dir = _fetch_project(uri=_build_uri(base_uri, subdirectory))
@@ -138,7 +144,7 @@ def test_parse_subdirectory():
     assert parsed_subdirectory == "subdirectory"
 
     # Make sure periods are restricted in Git repo subdirectory paths.
-    period_fail_uri = GIT_PROJECT_URI + "#.."
+    period_fail_uri = f"{GIT_PROJECT_URI}#.."
     with pytest.raises(ExecutionException):
         _parse_subdirectory(period_fail_uri)
 

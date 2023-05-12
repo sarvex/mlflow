@@ -395,14 +395,14 @@ def deploy(
         if model_uri.startswith("models:/"):
             m_name = model_uri.split("/")[-2]
             m_version = int(model_uri.split("/")[-1])
-            azure_model_id = "{}:{}".format(m_name, m_version)
+            azure_model_id = f"{m_name}:{m_version}"
         elif (
             model_uri.startswith("runs:/")
             and get_tracking_uri().startswith("azureml")
             and get_registry_uri().startswith("azureml")
         ):
             mlflow_model = mlflow_register_model(model_uri, model_name)
-            azure_model_id = "{}:{}".format(mlflow_model.name, mlflow_model.version)
+            azure_model_id = f"{mlflow_model.name}:{mlflow_model.version}"
 
             _logger.info(
                 "Registered an Azure Model with name: `%s` and version: `%s`",
@@ -463,13 +463,13 @@ def deploy(
             environment.python.conda_dependencies.add_pip_package(whl_url)
         else:
             environment.python.conda_dependencies.add_pip_package(
-                "mlflow=={}".format(mlflow_version)
+                f"mlflow=={mlflow_version}"
             )
 
         # AzureML requires azureml-defaults to be installed to include
         # flask for the inference server.
         environment.python.conda_dependencies.add_pip_package(
-            "azureml-defaults=={}".format(AZUREML_VERSION)
+            f"azureml-defaults=={AZUREML_VERSION}"
         )
 
         inference_config = InferenceConfig(
@@ -544,9 +544,6 @@ def _create_dockerfile(output_path, mlflow_path=None):
                         Dockerfile command for MLflow installation will install MLflow from this
                         directory. Otherwise, it will install MLflow from pip.
     """
-    docker_cmds = ["RUN apt-get update && apt-get install -y default-jre"]
-    docker_cmds.append("RUN pip install azureml-sdk")
-
     if mlflow_path is not None:
         mlflow_install_cmd = "RUN pip install -e {mlflow_path}".format(
             mlflow_path=_get_container_path(mlflow_path)
@@ -564,8 +561,11 @@ def _create_dockerfile(output_path, mlflow_path=None):
                 mlflow_version=mlflow_version
             )
         )
-    docker_cmds.append(mlflow_install_cmd)
-
+    docker_cmds = [
+        "RUN apt-get update && apt-get install -y default-jre",
+        "RUN pip install azureml-sdk",
+        mlflow_install_cmd,
+    ]
     with open(output_path, "w") as f:
         f.write("\n".join(docker_cmds))
 
@@ -619,9 +619,8 @@ def _get_mlflow_azure_name(run_id):
     :return: A unique name for an Azure resource indicating that the resource was created by
              MLflow
     """
+    azureml_name = f"mlflow-model-{run_id}"
     azureml_max_resource_length = 32
-    resource_prefix = "mlflow-model-"
-    azureml_name = resource_prefix + run_id
     return azureml_name[:azureml_max_resource_length]
 
 
@@ -641,15 +640,13 @@ def _create_mlflow_wheel(mlflow_dir, out_dir):
         [sys.executable, "setup.py", "bdist_wheel", "-d", out_path], cwd=mlflow_dir, check=True
     )
     files = list(out_path.glob("./*.whl"))
-    if len(files) < 1:
+    if not files:
         raise MlflowException(
-            "Error creating MLFlow Wheel - couldn't"
-            " find it in dir {} - found {}".format(out_path, files)
+            f"Error creating MLFlow Wheel - couldn't find it in dir {out_path} - found {files}"
         )
     if len(files) > 1:
         raise MlflowException(
-            "Error creating MLFlow Wheel - couldn't"
-            " find it in dir {} - found several wheels {}".format(out_path, files)
+            f"Error creating MLFlow Wheel - couldn't find it in dir {out_path} - found several wheels {files}"
         )
     return files[0]
 

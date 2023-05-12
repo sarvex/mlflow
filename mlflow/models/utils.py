@@ -57,8 +57,10 @@ class _Example(object):
             return np.isscalar(x) or x is None
 
         def _is_tensor(x):
-            return isinstance(x, np.ndarray) or (
-                isinstance(x, dict) and all([isinstance(ary, np.ndarray) for ary in x.values()])
+            return (
+                isinstance(x, np.ndarray)
+                or isinstance(x, dict)
+                and all(isinstance(ary, np.ndarray) for ary in x.values())
             )
 
         def _handle_tensor_nans(x: np.ndarray):
@@ -81,7 +83,7 @@ class _Example(object):
 
         def _handle_dataframe_input(input_ex):
             if isinstance(input_ex, dict):
-                if all([_is_scalar(x) for x in input_ex.values()]):
+                if all(_is_scalar(x) for x in input_ex.values()):
                     input_ex = pd.DataFrame([input_ex])
                 else:
                     raise TypeError(
@@ -93,7 +95,7 @@ class _Example(object):
                         raise TensorsNotSupportedException(
                             "Row '{0}' has shape {1}".format(i, x.shape)
                         )
-                if all([_is_scalar(x) for x in input_ex]):
+                if all(_is_scalar(x) for x in input_ex):
                     input_ex = pd.DataFrame([input_ex], columns=range(len(input_ex)))
                 else:
                     input_ex = pd.DataFrame(input_ex)
@@ -180,7 +182,7 @@ def _read_example(mlflow_model: Model, path: str):
     example_type = mlflow_model.saved_input_example_info["type"]
     if example_type not in ["dataframe", "ndarray"]:
         raise MlflowException(
-            "This version of mlflow can not load example of type {}".format(example_type)
+            f"This version of mlflow can not load example of type {example_type}"
         )
     input_schema = mlflow_model.signature.inputs if mlflow_model.signature is not None else None
     path = os.path.join(path, mlflow_model.saved_input_example_info["artifact_path"])

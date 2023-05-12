@@ -144,14 +144,14 @@ def _build_mlflow_run_cmd(
     mlflow_run_arr = ["mlflow", "run", uri, "-e", entry_point, "--run-id", run_id]
     if docker_args is not None:
         for key, value in docker_args.items():
-            args = key if isinstance(value, bool) else "%s=%s" % (key, value)
+            args = key if isinstance(value, bool) else f"{key}={value}"
             mlflow_run_arr.extend(["--docker-args", args])
     if storage_dir is not None:
         mlflow_run_arr.extend(["--storage-dir", storage_dir])
     if not use_conda:
         mlflow_run_arr.append("--no-conda")
     for key, value in parameters.items():
-        mlflow_run_arr.extend(["-P", "%s=%s" % (key, value)])
+        mlflow_run_arr.extend(["-P", f"{key}={value}"])
     return mlflow_run_arr
 
 
@@ -161,7 +161,7 @@ def _run_mlflow_run_cmd(mlflow_run_arr, env_map):
     Returns a handle to the subprocess. Popen launched to invoke ``mlflow run``.
     """
     final_env = os.environ.copy()
-    final_env.update(env_map)
+    final_env |= env_map
     # Launch `mlflow run` command as the leader of its own process group so that we can do a
     # best-effort cleanup of all its descendant processes if needed
     if sys.platform == "win32":
@@ -186,7 +186,7 @@ def _run_entry_point(command, work_dir, experiment_id, run_id):
     :param run_id: MLflow run ID associated with the entry point execution.
     """
     env = os.environ.copy()
-    env.update(get_run_env_vars(run_id, experiment_id))
+    env |= get_run_env_vars(run_id, experiment_id)
     env.update(get_databricks_env_vars(tracking_uri=mlflow.get_tracking_uri()))
     _logger.info("=== Running command '%s' in run with ID '%s' === ", command, run_id)
     # in case os name is not 'nt', we are not running on windows. It introduces
@@ -209,17 +209,10 @@ def _get_docker_command(image, active_run, docker_args=None, volumes=None, user_
         for name, value in docker_args.items():
             # Passed just the name as boolean flag
             if isinstance(value, bool) and value:
-                if len(name) == 1:
-                    cmd += ["-" + name]
-                else:
-                    cmd += ["--" + name]
+                cmd += [f"-{name}"] if len(name) == 1 else [f"--{name}"]
             else:
                 # Passed name=value
-                if len(name) == 1:
-                    cmd += ["-" + name, value]
-                else:
-                    cmd += ["--" + name, value]
-
+                cmd += [f"-{name}", value] if len(name) == 1 else [f"--{name}", value]
     env_vars = get_run_env_vars(
         run_id=active_run.info.run_id, experiment_id=active_run.info.experiment_id
     )
@@ -266,7 +259,7 @@ def _get_local_artifact_cmd_and_envs(artifact_repo):
         container_path = os.path.join(MLFLOW_DOCKER_WORKDIR_PATH, container_path)
         container_path = os.path.normpath(container_path)
     abs_artifact_dir = os.path.abspath(artifact_dir)
-    return ["-v", "%s:%s" % (abs_artifact_dir, container_path)], {}
+    return ["-v", f"{abs_artifact_dir}:{container_path}"], {}
 
 
 def _get_s3_artifact_cmd_and_envs(artifact_repo):
@@ -279,14 +272,14 @@ def _get_s3_artifact_cmd_and_envs(artifact_repo):
 
     volumes = []
     if posixpath.exists(aws_path):
-        volumes = ["-v", "%s:%s" % (str(aws_path), "/.aws")]
+        volumes = ["-v", f"{str(aws_path)}:/.aws"]
     envs = {
         "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
         "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
         "MLFLOW_S3_ENDPOINT_URL": os.environ.get("MLFLOW_S3_ENDPOINT_URL"),
         "MLFLOW_S3_IGNORE_TLS": os.environ.get("MLFLOW_S3_IGNORE_TLS"),
     }
-    envs = dict((k, v) for k, v in envs.items() if v is not None)
+    envs = {k: v for k, v in envs.items() if v is not None}
     return volumes, envs
 
 
@@ -296,7 +289,7 @@ def _get_azure_blob_artifact_cmd_and_envs(artifact_repo):
         "AZURE_STORAGE_CONNECTION_STRING": os.environ.get("AZURE_STORAGE_CONNECTION_STRING"),
         "AZURE_STORAGE_ACCESS_KEY": os.environ.get("AZURE_STORAGE_ACCESS_KEY"),
     }
-    envs = dict((k, v) for k, v in envs.items() if v is not None)
+    envs = {k: v for k, v in envs.items() if v is not None}
     return [], envs
 
 
@@ -307,7 +300,7 @@ def _get_gcs_artifact_cmd_and_envs(artifact_repo):
 
     if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
         credentials_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-        cmds = ["-v", "{}:/.gcs".format(credentials_path)]
+        cmds = ["-v", f"{credentials_path}:/.gcs"]
         envs["GOOGLE_APPLICATION_CREDENTIALS"] = "/.gcs"
     return cmds, envs
 
@@ -320,7 +313,7 @@ def _get_hdfs_artifact_cmd_and_envs(artifact_repo):
         "MLFLOW_KERBEROS_USER": os.environ.get("MLFLOW_KERBEROS_USER"),
         "MLFLOW_PYARROW_EXTRA_CONF": os.environ.get("MLFLOW_PYARROW_EXTRA_CONF"),
     }
-    envs = dict((k, v) for k, v in envs.items() if v is not None)
+    envs = {k: v for k, v in envs.items() if v is not None}
 
     if "MLFLOW_KERBEROS_TICKET_CACHE" in envs:
         ticket_cache = envs["MLFLOW_KERBEROS_TICKET_CACHE"]

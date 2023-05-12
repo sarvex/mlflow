@@ -22,12 +22,12 @@ class MockResponse:
 
     @classmethod
     def from_versions(cls, versions):
-        return cls({"releases": {v: [v + ".whl"] for v in versions}})
+        return cls({"releases": {v: [f"{v}.whl"] for v in versions}})
 
 
 def run_test(src, src_expected, mock_responses):
     def patch_urlopen(url):
-        package_name = re.search(r"https://pypi.python.org/pypi/(.+)/json", url).group(1)
+        package_name = re.search(r"https://pypi.python.org/pypi/(.+)/json", url)[1]
         return mock_responses[package_name]
 
     with tempfile.TemporaryDirectory() as tmpdir:
